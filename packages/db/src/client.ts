@@ -1,10 +1,18 @@
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "../generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error(
+    "DATABASE_URL is not set. Make sure dotenv is loaded before importing @repo/db."
+  );
+}
+
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
 });
-console.log("DATABASE_URL:", process.env.DATABASE_URL);
+console.log("DATABASE_URL:", connectionString);
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 

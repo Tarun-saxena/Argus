@@ -1,41 +1,16 @@
+import "dotenv/config";
 import express from "express";
-import cors from "cors";
+import authRoutes from "./modules/auth/routes.js";
+import cookieParser from "cookie-parser";
+
 
 const app = express();
-
-// Middleware
-app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 
+app.use("/auth", authRoutes);
 
-app.get("/", (req, res) => {
-  res.json({
-    message: "HTTP Server running",
-  });
-});
-
-//Signup
-app.post("/signup", (req, res) => {
-  console.log(req.body);
-
-  res.json({
-    
-    message: "Signup endpoint hit"
-  });
-});
-
-//Signin
-app.post("/signin", (req, res) => {
-  console.log(req.body);
-
-  res.json({
-  
-    message: "Signin endpoint hit"
-  });
-});
-
-const PORT = 3001;
-
-app.listen(PORT, () => {
-  console.log(`HTTP Server running on http://localhost:${PORT}`);
+app.listen(4000, () => console.log("http-server running on :4000"));
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
 });

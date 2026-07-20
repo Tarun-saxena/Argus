@@ -14,8 +14,92 @@ datasource db {
 }
 
 model User{
-  id Int @id @default(autoincrement())
-  username String @unique
-  password String
-  email String @unique
+  id            String    @id @default(uuid())
+  githubId String @unique @map("github_id")
+  username String 
+  email String? @unique
+  skill String[]
+  preferredLanguages String[] 
+  interests String[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt  @map("updated_at")
+  
+  recommendations     Recommendation[]
+  @@map("users")
+}
+
+model Repo{
+  id  String    @id @default(uuid())
+  githubId String @unique @map("github_id")
+  name String
+  fullName String @map("full_name")
+  stars  Int @default(0)
+  primaryLanguage String? @map("primary_language")
+  lastPolledAt  DateTime? @map("last_polled_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  topics String[]
+
+  issues Issue[]
+  @@map("repos")
+
+}
+
+enum IssueStatus {
+  OPEN
+  CLOSED
+  IN_PROGRESS
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+
+model Issue {
+  id                String      @id @default(uuid())
+  githubId          String      @unique @map("github_id")
+  repoId            String      @map("repo_id")
+  repo              Repo        @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  title             String
+  body              String?     @db.Text
+  labels            String[]
+  status            IssueStatus @default(OPEN)
+  url               String
+
+  //ai generated fields
+  aiDifficulty      Difficulty? @map("ai_difficulty")
+  aiSummary         String?     @map("ai_summary") @db.Text
+  aiRelevantFiles    String[]   @map("ai_relevant_files")
+  aiSkillsRequired  String[]    @map("ai_skills_required")
+  aiEstimatedTime   String?     @map("ai_estimated_time")
+  analyzedAt        DateTime?   @map("analyzed_at")
+
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  recommendations   Recommendation[]
+
+  @@index([repoId])
+  @@index([status])
+  @@map("issues")
+}
+
+model Recommendation {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issueId   String   @map("issue_id")
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  score     Float
+  reason    String?  @db.Text
+  shownAt   DateTime? @map("shown_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, issueId])
+  @@index([userId])
+  @@map("recommendations")
 }
