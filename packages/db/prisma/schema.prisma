@@ -38,6 +38,7 @@ model Repo{
   lastPolledAt  DateTime? @map("last_polled_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   topics String[]
+  etag String? @map("etag")
 
   issues Issue[]
   @@map("repos")
