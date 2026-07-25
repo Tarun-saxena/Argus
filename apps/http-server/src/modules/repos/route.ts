@@ -1,5 +1,5 @@
 import { Router } from "express";
-import  authMiddleware from "../../middleware/requireAuth.js";
+import authMiddleware from "../../middleware/requireAuth.js";
 import { prisma } from "@repo/db";
 import { repoPollQueue } from "@repo/queue";
 import axios from "axios";

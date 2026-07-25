@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { repoPollQueue } from "@repo/queue";
+import { aiAnalysisQueue, repoPollQueue } from "@repo/queue";
 import { redisConnection } from "@repo/queue";
 import { prisma } from "@repo/db";
 import axios from "axios";
@@ -27,7 +27,7 @@ async function pollRepo(repoId: string) {
   const res = await axios.get(
     `https://api.github.com/repos/${repo.fullName}/issues`,
     {
-      params: { state: "open", per_page: 50 },
+      params: { state: "open", per_page: 100 },
       headers,
       validateStatus: (s) => s === 200 || s === 304,
     }
@@ -38,10 +38,12 @@ async function pollRepo(repoId: string) {
     return;
   }
 
-  const issues = (res.data as any[]).filter((i) => !i.pull_request);
+  const issues = (res.data as any[])
+    .filter((item) => !item.pull_request)
+    .slice(0, 50);
 
   for (const issue of issues) {
-    await prisma.issue.upsert({
+    const saved = await prisma.issue.upsert({
       where: { githubId: String(issue.id) },
       update: {
         title: issue.title,
@@ -60,6 +62,16 @@ async function pollRepo(repoId: string) {
         status: "OPEN",
       },
     });
+
+
+    if (!saved.analyzedAt) {
+      await aiAnalysisQueue.add("ai-analysis", {
+        issueId: saved.id,
+      }, {
+        attempts: 2,
+        backoff: { type: "exponential", delay: 5000 },
+      });
+    }
   }
 
   await prisma.repo.update({
