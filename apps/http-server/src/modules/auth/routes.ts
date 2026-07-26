@@ -13,7 +13,7 @@ router.get("/github", (req, res) => {
 router.get("/github/callback", async (req, res) => {
   const { code } = req.query;
 
-  if (!code ) {
+  if (!code) {
     return res.status(400).send("Invalid OAuth state");
   }
 
@@ -28,7 +28,7 @@ router.get("/github/callback", async (req, res) => {
         githubId: ghUser.githubId,
         username: ghUser.username,
         email: ghUser.email,
-        skill: [],
+        skills: [],
         preferredLanguages: [],
         interests: [],
       },
@@ -38,7 +38,7 @@ router.get("/github/callback", async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure:false,
+      secure: false,
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
