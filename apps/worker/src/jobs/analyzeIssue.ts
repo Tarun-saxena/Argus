@@ -4,6 +4,7 @@ import { redisConnection } from "@repo/queue";
 import { prisma } from "@repo/db";
 import type { Difficulty } from "@repo/db";
 import { z } from "zod";
+import { matchUsersQueue } from "@repo/queue";
 
 const analysisSchema = z.object({
     difficulty: z.enum([
@@ -120,6 +121,15 @@ Base difficulty on:
         },
     });
 
+    await matchUsersQueue.add(
+        "match-issues",
+        { issueId },
+        {
+            jobId: `match-${issueId}`,
+            attempts: 3,
+            backoff: { type: "exponential", delay: 3000 },
+        }
+    );
     console.log(`Issue ${issueId} analyzed successfully ${parsed.difficulty} — ${parsed.summary.slice(0, 60)}...`);
 }
 

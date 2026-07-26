@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { aiAnalysisQueue, repoPollQueue } from "@repo/queue";
+import { aiAnalysisQueue } from "@repo/queue";
 import { redisConnection } from "@repo/queue";
 import { prisma } from "@repo/db";
 import axios from "axios";
@@ -34,7 +34,32 @@ async function pollRepo(repoId: string) {
   );
 
   if (res.status === 304) {
-    console.log(`  → ${repo.fullName} unchanged, skipping`);
+    console.log(`  → ${repo.fullName} unchanged`);
+
+    const pendingAnalyzeIssues = await prisma.issue.findMany({
+      where: {
+        repoId: repo.id,
+        analyzedAt: null,
+        status: "OPEN",
+      },
+      select: { id: true }
+
+    });
+
+    for (const issue of pendingAnalyzeIssues) {
+      await aiAnalysisQueue.add("ai-analysis", {
+        issueId: issue.id,
+      }, {
+        jobId: `ai-${issue.id}`,
+        attempts: 2,
+        backoff: { type: "exponential", delay: 60000 },
+      });
+    };
+
+    console.log(
+      `→ ${pendingAnalyzeIssues.length} unanalyzed issues queued`
+    );
+
     return;
   }
 
@@ -68,8 +93,9 @@ async function pollRepo(repoId: string) {
       await aiAnalysisQueue.add("ai-analysis", {
         issueId: saved.id,
       }, {
+        jobId: `ai-${saved.id}`,
         attempts: 2,
-        backoff: { type: "exponential", delay: 5000 },
+        backoff: { type: "exponential", delay: 60000 },
       });
     }
   }
@@ -97,9 +123,9 @@ const worker = new Worker(
 );
 
 worker.on("completed", (job) => {
-  console.log(`✓ Job ${job.id} completed`);
+  console.log(`Job ${job.id} completed`);
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`✗ Job ${job?.id} failed:`, err.message);
+  console.error(`Job ${job?.id} failed:`, err.message);
 });

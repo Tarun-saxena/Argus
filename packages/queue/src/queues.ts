@@ -12,3 +12,7 @@ export const aiAnalysisQueue = new Queue("ai-analysis", {
   connection: redisConnection,
 });
 
+export const matchUsersQueue = new Queue("match-users", {
+  connection: redisConnection,
+});
+
