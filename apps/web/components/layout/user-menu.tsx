@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { LogOutIcon, SettingsIcon, UserIcon } from "lucide-react"
+import { api } from "@/lib/api"
 
 interface User {
   username: string
@@ -35,15 +36,8 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
     } else {
       // Default client-side logout behavior
       try {
-        const res = await fetch("http://localhost:4000/auth/logout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        })
-        if (res.ok) {
-          window.location.href = "/"
-        }
+        await api.logout()
+        window.location.href = "/"
       } catch (err) {
         console.error("Logout failed:", err)
       }

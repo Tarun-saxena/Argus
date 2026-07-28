@@ -24,6 +24,7 @@ import {
   LogOutIcon,
   PlusIcon,
 } from "lucide-react"
+import { api } from "@/lib/api"
 
 interface CommandPaletteProps {
   open: boolean
@@ -137,9 +138,7 @@ export function CommandPalette({ open, setOpen }: CommandPaletteProps) {
             onSelect={() =>
               runCommand(async () => {
                 try {
-                  await fetch("http://localhost:4000/auth/logout", {
-                    method: "POST",
-                  })
+                  await api.logout()
                   window.location.href = "/"
                 } catch (err) {
                   console.error("Logout failed:", err)

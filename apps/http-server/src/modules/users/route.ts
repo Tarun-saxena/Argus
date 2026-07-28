@@ -53,7 +53,23 @@ router.patch("/me", authMiddleware, async (req, res) => {
     }
 })
 
+router.get("/me", authMiddleware, async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId as string },
+            select: { id: true, username: true, email: true, skills: true, preferredLanguages: true, interests: true, createdAt: true, updatedAt: true }
+        });
 
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        return res.json(user);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Failed to fetch user profile" });
+    }
+});
 export default router;
 
 

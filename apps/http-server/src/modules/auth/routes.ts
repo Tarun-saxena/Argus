@@ -43,7 +43,7 @@ router.get("/github/callback", async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.redirect(process.env.FRONTEND_URL!);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   } catch (err) {
     console.error(err);
     res.status(500).send("OAuth failed");
@@ -55,4 +55,4 @@ router.post("/logout", (req, res) => {
   res.json({ ok: true });
 });
 
-export default router;
+export default router;                                                                     

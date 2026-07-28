@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { githubAuthUrl } from "@/lib/config"
 
 interface MockIssue {
   id: string
@@ -344,7 +345,7 @@ export function ProductPreview() {
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     onClick={() => {
-                      window.location.href = "http://localhost:4000/auth/github"
+                      window.location.href = githubAuthUrl
                     }}
                     className="flex-1 sm:flex-initial h-9 px-4 rounded-md bg-accent-bright hover:bg-accent-hover text-[#09090b] font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
                   >

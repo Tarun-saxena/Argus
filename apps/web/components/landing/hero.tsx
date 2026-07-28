@@ -4,6 +4,7 @@ import * as React from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { githubAuthUrl } from "@/lib/config"
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -17,7 +18,7 @@ export function Hero() {
   const shouldReduceMotion = useReducedMotion()
 
   const handleGetStarted = () => {
-    window.location.href = "http://localhost:4000/auth/github"
+    window.location.href = githubAuthUrl
   }
 
   const handleExplore = () => {

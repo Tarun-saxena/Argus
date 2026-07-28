@@ -5,8 +5,16 @@ import repoRouter from "./modules/repos/route.js";
 import cookieParser from "cookie-parser";
 import userRouter from "./modules/users/route.js";
 import recommendationRoutes from "./modules/recommendations/routes.js"
+import cors from "cors";
 
 const app = express();
+
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 app.use(express.json());
 

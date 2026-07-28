@@ -6,6 +6,7 @@ import { MenuIcon, XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet"
+import { githubAuthUrl } from "@/lib/config"
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -26,7 +27,7 @@ export function Header() {
   ]
 
   const handleLogin = () => {
-    window.location.href = "http://localhost:4000/auth/github"
+    window.location.href = githubAuthUrl
   }
 
   return (
