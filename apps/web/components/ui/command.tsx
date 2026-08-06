@@ -60,11 +60,16 @@ function CommandDialog({
         )}
         showCloseButton={showCloseButton}
       >
-        {children}
+        {/* Command root must wrap children so cmdk context is present for
+            CommandInput, CommandList, CommandItem etc. Without this wrapper,
+            CommandPrimitive.Input.useContext() returns undefined and crashes
+            with "Cannot read properties of undefined (reading 'subscribe')" */}
+        <Command>{children}</Command>
       </DialogContent>
     </Dialog>
   )
 }
+
 
 function CommandInput({
   className,

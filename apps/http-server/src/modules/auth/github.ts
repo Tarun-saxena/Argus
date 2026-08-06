@@ -1,35 +1,40 @@
+import "dotenv/config";
 import axios from "axios";
 
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET!;
-const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL!;
+function getGithubConfig() {
+  return {
+    clientId: process.env.GITHUB_CLIENT_ID ?? "",
+    clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+    callbackUrl: process.env.GITHUB_CALLBACK_URL ?? "",
+  };
+}
 
-export function getGithubAuthUrl(){
+export function getGithubAuthUrl() {
+  const { clientId, callbackUrl } = getGithubConfig();
+  const param = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: callbackUrl,
+    scope: "read:user user:email",
+  });
 
-    const param= new URLSearchParams({
-        client_id:GITHUB_CLIENT_ID,
-        redirect_uri:GITHUB_CALLBACK_URL,
-        scope:"read:user user:email",
-        
-    })
-
-    return `https://github.com/login/oauth/authorize?${param.toString()}`;
+  return `https://github.com/login/oauth/authorize?${param.toString()}`;
 }
 
 export async function getToken(code: string) {
+  const { clientId, clientSecret, callbackUrl } = getGithubConfig();
   const res = await axios.post(
     "https://github.com/login/oauth/access_token",
     {
-      client_id: GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       code,
-      redirect_uri: GITHUB_CALLBACK_URL,
+      redirect_uri: callbackUrl,
     },
     { headers: { Accept: "application/json" } }
   );
 
   return res.data.access_token as string;
-};
+}
 
 export async function fetchGithubUser(accessToken: string) {
     

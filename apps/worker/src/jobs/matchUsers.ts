@@ -70,6 +70,11 @@ export function scoreIssueForUser(user: UserProfile, issue: IssueForMatching) {
 
 
 async function matchIssueToUsers(issueId: string) {
+    if (!issueId) {
+        console.error("matchIssueToUsers called with no issueId, skipping");
+        return;
+    }
+
     const issue = await prisma.issue.findUnique({
         where: { id: issueId },
         include: {
@@ -153,25 +158,114 @@ async function matchIssueToUsers(issueId: string) {
 
 };
 
-export const matchUsersWorker = new Worker(
+async function rematchUser(userId: string) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, skills: true, preferredLanguages: true },
+    });
+
+    if (!user) {
+        return;
+    }
+
+    if (user.skills.length === 0 && user.preferredLanguages.length === 0) {
+        await prisma.recommendation.deleteMany({
+            where: { userId: user.id },
+        });
+        await prisma.user.update({
+            where: { id: userId },
+            data: { lastMatchedAt: new Date() },
+        });
+        console.log(`Rematched user ${userId}: 0 recommendations (no skills or preferred languages)`);
+        return;
+    }
+
+    const issues = await prisma.issue.findMany({
+        where: { analyzedAt: { not: null }, status: "OPEN" },
+        include: { repo: true },
+    });
+
+    const toUpsert: { userId: string; issueId: string; score: number }[] = [];
+    const toDeleteIds: string[] = [];
+
+    for (const issue of issues) {
+        const score = scoreIssueForUser(
+            {
+                skills: user.skills,
+                preferredLanguages: user.preferredLanguages
+            },
+            {
+                labels: issue.labels,
+                aiSkillsRequired: issue.aiSkillsRequired,
+                aiDifficulty: issue.aiDifficulty ?? "",
+                createdAt: issue.createdAt,
+                repo: { primaryLanguage: issue.repo.primaryLanguage },
+            }
+        );
+
+        if (score > 40) {
+            toUpsert.push({ userId: user.id, issueId: issue.id, score });
+        } else {
+            toDeleteIds.push(issue.id);
+        }
+    }
+
+    // bulk delete first (fast, single query)
+    await prisma.recommendation.deleteMany({
+        where: { userId: user.id, issueId: { in: toDeleteIds } },
+    });
+
+    // batch upserts in parallel chunks
+    const CHUNK_SIZE = 25;
+    for (let i = 0; i < toUpsert.length; i += CHUNK_SIZE) {
+        const chunk = toUpsert.slice(i, i + CHUNK_SIZE);
+        await Promise.all(
+            chunk.map((r) =>
+                prisma.recommendation.upsert({
+                    where: { userId_issueId: { userId: r.userId, issueId: r.issueId } },
+                    update: { score: r.score },
+                    create: r,
+                })
+            )
+        );
+    }
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { lastMatchedAt: new Date() },
+    });
+
+    console.log(`Rematched user ${userId}: ${toUpsert.length} recommendations`);
+}
+
+
+export const matchUserWorker = new Worker(
     "match-users",
     async (job) => {
-        await matchIssueToUsers(job.data.issueId as string)
+        if (job.data.issueId) {
+            await matchIssueToUsers(job.data.issueId as string);
+            return;
+        }
 
-    }, {
-    connection: redisConnection,
-    concurrency: 3
-}
+        if (job.data.userId) {
+            console.log(`[Worker] Processing rematch job for user ${job.data.userId}`);
+            await rematchUser(job.data.userId as string);
+        }
+    },
+    {
+        connection: redisConnection,
+        concurrency: 3,
+    }
 );
 
-matchUsersWorker.on("completed", (job) => {
-    console.log(`Match job ${job.id} completed`);
+matchUserWorker.on("completed", (job) => {
+    console.log(`match job ${job.id} completed`);
 });
 
-matchUsersWorker.on("failed", (job, err) => {
-    console.error(`Match job ${job?.id} failed:`, err.message);
+matchUserWorker.on("failed", (job, err) => {
+    console.error(`match job ${job?.id} failed:`, err.message);
 });
 
-matchUsersWorker.on("error", (err) => {
-    console.error("Match worker error:", err.message);
+matchUserWorker.on("error", (err) => {
+    console.error("match worker error:", err.message);
 });
