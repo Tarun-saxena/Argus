@@ -197,7 +197,7 @@ export function Problem() {
 
           {/* Left Column */}
           <div className="flex flex-col gap-6 lg:col-span-3">
-            {[cards[0], cards[2]].map((card) => (
+            {[cards[0], cards[2]].filter((card): card is NonNullable<typeof card> => card !== undefined).map((card) => (
               <article
                 key={card.title}
                 className="flex h-[380px] flex-col rounded-[32px] border border-zinc-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-lg"
@@ -220,7 +220,7 @@ export function Problem() {
 
           {/* Right Column */}
           <div className="flex flex-col gap-4 lg:col-span-2">
-            {[cards[1], cards[3]].map((card) => (
+            {[cards[1], cards[3]].filter((card): card is NonNullable<typeof card> => card !== undefined).map((card) => (
               <article
                 key={card.title}
                 className="flex h-[380px] flex-col rounded-[32px] border border-zinc-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-lg"

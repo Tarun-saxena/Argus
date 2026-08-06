@@ -1,12 +1,16 @@
 export type Difficulty = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+export type TriageState = "INBOX" | "BOOKMARKED" | "CLAIMED" | "IGNORED";
 
 export interface UserProfile {
   id: string;
   username: string;
   email: string | null;
+  avatarUrl: string | null;
   skills: string[];
   preferredLanguages: string[];
   interests: string[];
+  createdAt: string;
+  lastMatchedAt: string | null;
 }
 
 export interface Repository {
@@ -22,8 +26,11 @@ export interface Repository {
 export interface Recommendation {
   id: string;
   score: number;
+  state: TriageState;
   issue: {
     id: string;
+    githubId?: string;
+    createdAt?: string;
     title: string;
     url: string;
     labels: string[];
@@ -31,6 +38,7 @@ export interface Recommendation {
     aiSummary: string | null;
     aiSkillsRequired: string[];
     aiEstimatedTime: string | null;
+    aiRelevantFiles: string[];
     repo: Pick<Repository, "name" | "fullName" | "stars" | "primaryLanguage">;
   };
 }

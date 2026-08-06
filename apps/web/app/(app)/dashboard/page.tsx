@@ -1,13 +1,14 @@
 import { RecommendationsView } from "@/components/issues/recommendations-view";
+import { PageHeader } from "@/components/shared/page-header";
 
 export default function DashboardPage() {
   return (
     <section className="space-y-6">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dashboard</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">Your recommendations</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Issues ranked for your profile and tracked repositories.</p>
-      </div>
+      <PageHeader
+        eyebrow="Feed"
+        title="Your recommendations"
+        description="Issues ranked and matched to your profile across all tracked repositories."
+      />
       <RecommendationsView />
     </section>
   );
