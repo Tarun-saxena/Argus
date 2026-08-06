@@ -159,12 +159,15 @@ async function matchIssueToUsers(issueId: string) {
 };
 
 async function rematchUser(userId: string) {
+    console.log(`[Rematch] rematch started for user ${userId}`);
+
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { id: true, skills: true, preferredLanguages: true },
     });
 
     if (!user) {
+        console.log(`[Rematch] User ${userId} not found`);
         return;
     }
 
@@ -176,7 +179,7 @@ async function rematchUser(userId: string) {
             where: { id: userId },
             data: { lastMatchedAt: new Date() },
         });
-        console.log(`Rematched user ${userId}: 0 recommendations (no skills or preferred languages)`);
+        console.log(`[Rematch] rematch completed for user ${userId}: 0 recommendations (no skills or preferred languages)`);
         return;
     }
 
@@ -185,49 +188,66 @@ async function rematchUser(userId: string) {
         include: { repo: true },
     });
 
-    const toUpsert: { userId: string; issueId: string; score: number }[] = [];
-    const toDeleteIds: string[] = [];
+    const BATCH_SIZE = 20;
+    const totalBatches = Math.ceil(issues.length / BATCH_SIZE) || 1;
+    let totalWritten = 0;
 
-    for (const issue of issues) {
-        const score = scoreIssueForUser(
-            {
-                skills: user.skills,
-                preferredLanguages: user.preferredLanguages
-            },
-            {
-                labels: issue.labels,
-                aiSkillsRequired: issue.aiSkillsRequired,
-                aiDifficulty: issue.aiDifficulty ?? "",
-                createdAt: issue.createdAt,
-                repo: { primaryLanguage: issue.repo.primaryLanguage },
+    for (let i = 0; i < issues.length; i += BATCH_SIZE) {
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const batchIssues = issues.slice(i, i + BATCH_SIZE);
+
+        console.log(`[Rematch] batch started ${batchNumber}/${totalBatches} (${batchIssues.length} issues)`);
+
+        const toUpsert: { userId: string; issueId: string; score: number }[] = [];
+        const toDeleteIds: string[] = [];
+
+        for (const issue of batchIssues) {
+            const score = scoreIssueForUser(
+                {
+                    skills: user.skills,
+                    preferredLanguages: user.preferredLanguages,
+                },
+                {
+                    labels: issue.labels,
+                    aiSkillsRequired: issue.aiSkillsRequired,
+                    aiDifficulty: issue.aiDifficulty ?? "",
+                    createdAt: issue.createdAt,
+                    repo: { primaryLanguage: issue.repo.primaryLanguage },
+                }
+            );
+
+            if (score > 40) {
+                toUpsert.push({ userId: user.id, issueId: issue.id, score });
+            } else {
+                toDeleteIds.push(issue.id);
             }
-        );
-
-        if (score > 40) {
-            toUpsert.push({ userId: user.id, issueId: issue.id, score });
-        } else {
-            toDeleteIds.push(issue.id);
         }
-    }
 
-    // bulk delete first (fast, single query)
-    await prisma.recommendation.deleteMany({
-        where: { userId: user.id, issueId: { in: toDeleteIds } },
-    });
+        // Write batch to database immediately
+        if (toDeleteIds.length > 0) {
+            await prisma.recommendation.deleteMany({
+                where: { userId: user.id, issueId: { in: toDeleteIds } },
+            });
+        }
 
-    // batch upserts in parallel chunks
-    const CHUNK_SIZE = 25;
-    for (let i = 0; i < toUpsert.length; i += CHUNK_SIZE) {
-        const chunk = toUpsert.slice(i, i + CHUNK_SIZE);
-        await Promise.all(
-            chunk.map((r) =>
-                prisma.recommendation.upsert({
-                    where: { userId_issueId: { userId: r.userId, issueId: r.issueId } },
-                    update: { score: r.score },
-                    create: r,
-                })
-            )
-        );
+        if (toUpsert.length > 0) {
+            await Promise.all(
+                toUpsert.map((r) =>
+                    prisma.recommendation.upsert({
+                        where: { userId_issueId: { userId: r.userId, issueId: r.issueId } },
+                        update: { score: r.score },
+                        create: r,
+                    })
+                )
+            );
+        }
+
+        totalWritten += toUpsert.length;
+
+        console.log(`[Rematch] number of recommendations written: ${toUpsert.length} (batch ${batchNumber}/${totalBatches})`);
+        console.log(`[Rematch] database commit for batch ${batchNumber}/${totalBatches}`);
+        console.log(`[Rematch] cache invalidated for batch ${batchNumber}/${totalBatches}`);
+        console.log(`[Rematch] batch completed ${batchNumber}/${totalBatches}`);
     }
 
     await prisma.user.update({
@@ -235,7 +255,7 @@ async function rematchUser(userId: string) {
         data: { lastMatchedAt: new Date() },
     });
 
-    console.log(`Rematched user ${userId}: ${toUpsert.length} recommendations`);
+    console.log(`[Rematch] rematch completed for user ${userId}. Total recommendations: ${totalWritten}`);
 }
 
 

@@ -32,6 +32,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+
   getMe: () => apiFetch<UserProfile>("/users/me"),
   updateMe: (data: Partial<Pick<UserProfile, "skills" | "preferredLanguages" | "interests">>) =>
     apiFetch<UserProfile>("/users/me", { method: "PATCH", body: JSON.stringify(data) }),

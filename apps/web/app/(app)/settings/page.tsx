@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   SaveIcon,
   Loader2Icon,
@@ -21,6 +21,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { SelectablePill } from "@/components/shared/selectable-pill";
+import { recommendationState } from "@/lib/recommendation-state";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // ─── Skill catalogue ──────────────────────────────────────────────────────────
 
@@ -99,6 +103,7 @@ function Section({
 // ─── Settings page ─────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
@@ -107,8 +112,14 @@ export default function SettingsPage() {
   const [interests, setInterests] = React.useState<string[]>([]);
 
   const [stats, setStats] = React.useState({ repos: 0, recommendations: 0, bookmarks: 0 });
-  const [saving, setSaving] = React.useState(false);
-  const [recalculating, setRecalculating] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState(recommendationState.getStatus());
+
+  React.useEffect(() => {
+    return recommendationState.subscribeStatus((status) => {
+      setSaveStatus(status);
+    });
+  }, []);
+
   const isDirty = React.useMemo(() => {
     if (!profile) return false;
     return (
@@ -118,38 +129,62 @@ export default function SettingsPage() {
     );
   }, [skills, languages, interests, profile]);
 
+  const inFlightRef = React.useRef(false);
+
+  const refreshStats = React.useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
+      const [repos, recs, bookmarks] = await Promise.all([
+        api.getRepos(),
+        api.getRecommendations(),
+        api.getRecommendations({ state: "BOOKMARKED" }),
+      ]);
+      setStats({
+        repos: repos.length,
+        recommendations: recs.count,
+        bookmarks: bookmarks.count,
+      });
+    } catch {
+      // ignore
+    } finally {
+      inFlightRef.current = false;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    return recommendationState.subscribeInvalidation(() => {
+      void refreshStats();
+    });
+  }, [refreshStats]);
+
   React.useEffect(() => {
     async function fetchAll() {
       try {
-        const [user, repos, recs, bookmarks] = await Promise.all([
+        const [user] = await Promise.all([
           api.getMe(),
-          api.getRepos(),
-          api.getRecommendations(),
-          api.getRecommendations({ state: "BOOKMARKED" }),
+          refreshStats(),
         ]);
         setProfile(user);
         setSkills(user.skills);
         setLanguages(user.preferredLanguages);
         setInterests(user.interests);
-        setStats({
-          repos: repos.length,
-          recommendations: recs.count,
-          bookmarks: bookmarks.count,
-        });
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "Could not load profile.");
       }
     }
     void fetchAll();
-  }, []);
+  }, [refreshStats]);
 
   const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const safetyTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
     };
   }, []);
 
@@ -158,59 +193,24 @@ export default function SettingsPage() {
   }
 
   async function handleSave() {
-    const saveTime = new Date();
-    setSaving(true);
+    if (saveStatus !== "idle") return; // Prevent duplicate submissions
 
-    // Cancel any existing active save poll loops
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    if (safetyTimerRef.current) {
-      clearTimeout(safetyTimerRef.current);
-      safetyTimerRef.current = null;
-    }
+    const saveTime = new Date();
+    recommendationState.setStatus("saving");
 
     try {
       const updated = await api.updateMe({ skills, preferredLanguages: languages, interests });
-      // Sync profile so isDirty resets to false immediately after save
       setProfile(updated);
     } catch (err) {
       console.error("Save failed:", err);
-      setSaving(false);
+      toast.error("Failed to save changes. Please try again.");
+      recommendationState.setStatus("idle");
       return;
     }
 
-    setSaving(false);
-    setRecalculating(true);
-
-    function cleanup() {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-      if (safetyTimerRef.current) {
-        clearTimeout(safetyTimerRef.current);
-        safetyTimerRef.current = null;
-      }
-      setRecalculating(false);
-    }
-
-    pollRef.current = setInterval(async () => {
-      try {
-        const me = await api.getMe();
-        if (me.lastMatchedAt && new Date(me.lastMatchedAt).getTime() >= saveTime.getTime()) {
-          setProfile(me);
-          cleanup();
-          void api.getRecommendations();
-        }
-      } catch {
-        // ignore transient poll errors — the safety timeout will clean up
-      }
-    }, 1500);
-
-    // Safety timeout: stop polling after 30s even if the worker hasn't responded
-    safetyTimerRef.current = setTimeout(cleanup, 30_000);
+    toast.success("Profile saved. Recalculating recommendations...");
+    recommendationState.startRematchTracking(saveTime);
+    void refreshStats();
   }
 
   // ─── Error state ────────────────────────────────────────────────────────────
@@ -258,40 +258,11 @@ export default function SettingsPage() {
       transition={{ duration: 0.2 }}
       className="max-w-3xl space-y-10"
     >
-      {/* ── Page header with save action ── */}
+      {/* ── Page header ── */}
       <PageHeader
         eyebrow="Settings"
         title="Profile & preferences"
         description="Your skills and preferences are used to score and rank open-source issues."
-        action={
-          <div className="flex items-center gap-3">
-            {isDirty && (
-              <span className="text-xs text-amber-400 font-medium" aria-live="polite">
-                Unsaved changes
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || recalculating || !isDirty}
-              aria-busy={saving || recalculating}
-              aria-label={saving ? "Saving profile" : recalculating ? "Recalculating matches" : "Save profile changes"}
-              className={cn(
-                "inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium transition-all",
-                isDirty
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
-              )}
-            >
-              {saving ? (
-                <Loader2Icon className="size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <SaveIcon className="size-4" aria-hidden="true" />
-              )}
-              {saving ? "Saving…" : recalculating ? "Recalculating…" : "Save changes"}
-            </button>
-          </div>
-        }
       />
 
       {/* ── Profile identity ── */}
@@ -456,40 +427,69 @@ export default function SettingsPage() {
         </Section>
       </div>
 
-      {/* ── Bottom save bar (sticky, only when dirty) ── */}
-      {isDirty && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 16 }}
-          role="status"
-          aria-label="You have unsaved changes"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 rounded-xl border border-border bg-card/95 backdrop-blur-sm px-5 py-3 shadow-xl"
-        >
-          <p className="text-sm text-foreground font-medium">Unsaved changes</p>
-          <button
-            type="button"
-            onClick={() => {
-              setSkills(profile.skills);
-              setLanguages(profile.preferredLanguages);
-              setInterests(profile.interests);
-            }}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+      {/* ── Bottom save bar (sticky) ── */}
+      <AnimatePresence>
+        {(isDirty || saveStatus !== "idle") && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.2 }}
+            role="status"
+            aria-label="Save status bar"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 rounded-xl border border-border bg-card/95 backdrop-blur-md px-5 py-3 shadow-xl"
           >
-            Discard
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            aria-busy={saving}
-            className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-all"
-          >
-            {saving ? <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" /> : recalculating ? <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" /> : <CheckCircle2Icon className="size-3.5" aria-hidden="true" />}
-            {saving ? "Saving…" : recalculating ? "Recalculating…" : "Save"}
-          </button>
-        </motion.div>
-      )}
+            {saveStatus === "saving" ? (
+              <>
+                <Loader2Icon className="size-4 animate-spin text-primary shrink-0" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">Saving preferences...</p>
+              </>
+            ) : saveStatus === "recalculating" ? (
+              <>
+                <Loader2Icon className="size-4 animate-spin text-primary shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Recalculating recommendations for your updated profile...</p>
+                  <p className="text-[11px] text-muted-foreground">Matching open-source repositories to your stack</p>
+                </div>
+              </>
+            ) : saveStatus === "success" ? (
+              <>
+                <CheckCircle2Icon className="size-4 text-emerald-400 shrink-0" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">Recommendations updated successfully.</p>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-4 ml-2"
+                >
+                  View Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-foreground font-medium">Unsaved changes</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSkills(profile.skills);
+                    setLanguages(profile.preferredLanguages);
+                    setInterests(profile.interests);
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="inline-flex items-center gap-1.5 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all"
+                >
+                  <CheckCircle2Icon className="size-3.5" aria-hidden="true" />
+                  Save changes
+                </button>
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

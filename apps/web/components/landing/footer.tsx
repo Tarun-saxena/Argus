@@ -96,10 +96,8 @@ export function Footer() {
 
             {/* Right */}
             <div className="flex items-center gap-6 text-sm text-[#71717a]">
-              <Link href="#">Terms</Link>
-
-              <Link href="#">Privacy</Link>
-
+              <span className="cursor-default hover:text-[#09090b] transition-colors">Terms</span>
+              <span className="cursor-default hover:text-[#09090b] transition-colors">Privacy</span>
             </div>
 
           </div>

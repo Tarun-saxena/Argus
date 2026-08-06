@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FilterPills } from "@/components/shared/filter-pills";
 import { EmptyState } from "@/components/shared/empty-state";
+import { recommendationState } from "@/lib/recommendation-state";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -442,36 +443,95 @@ export function RecommendationsView() {
   const [items, setItems] = React.useState<LocalRec[]>([]);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [hasRepos, setHasRepos] = React.useState(false);
 
-  const load = React.useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
+  const activeIndexRef = React.useRef(activeIndex);
+  React.useEffect(() => {
+    activeIndexRef.current = activeIndex;
+  }, [activeIndex]);
+
+  const inFlightRef = React.useRef(false);
+
+  const load = React.useCallback(async (opts?: { isSilent?: boolean; signal?: AbortSignal }) => {
+    if (inFlightRef.current && opts?.isSilent) return; // Deduplicate background updates
+    inFlightRef.current = true;
+
+    console.log("[Frontend] frontend refresh triggered");
+
+    if (!opts?.isSilent) {
+      setLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
     setError(null);
     try {
       const [recsResponse, reposResponse] = await Promise.all([
-        api.getRecommendations({ difficulty }, { signal }),
-        api.getRepos({ signal }),
+        api.getRecommendations({ difficulty }, { signal: opts?.signal }),
+        api.getRepos({ signal: opts?.signal }),
       ]);
-      setItems(recsResponse.recommendations as LocalRec[]);
+      
+      const newItems = recsResponse.recommendations as LocalRec[];
+      console.log(`[Frontend] recommendations received: ${newItems.length}`);
       setHasRepos(reposResponse.length > 0);
-      setActiveIndex(0);
+      
+      setItems((prevItems) => {
+        // Map pending state from prevItems if user triaged an item recently
+        const prevPendingMap = new Map(
+          prevItems
+            .filter((r) => r.pendingState !== undefined)
+            .map((r) => [r.id, r.pendingState])
+        );
+
+        const mergedItems = newItems.map((item) => {
+          const pendingState = prevPendingMap.get(item.id);
+          return pendingState !== undefined ? { ...item, pendingState } : item;
+        });
+
+        const currentSelectedId = prevItems[activeIndexRef.current]?.id;
+        if (currentSelectedId) {
+          const newIdx = mergedItems.findIndex((r) => r.id === currentSelectedId);
+          if (newIdx >= 0) {
+            setActiveIndex(newIdx);
+          } else {
+            setActiveIndex((i) => Math.max(0, Math.min(i, mergedItems.length - 1)));
+          }
+        }
+
+        console.log(`[Frontend] recommendation count after each update: ${mergedItems.length}`);
+        return mergedItems;
+      });
     } catch (caught) {
       if (caught instanceof Error && caught.name === "AbortError") {
         return;
       }
       setError(caught instanceof Error ? caught.message : "Could not load recommendations.");
     } finally {
-      if (!signal || !signal.aborted) {
+      if (!opts?.signal || !opts.signal.aborted) {
         setLoading(false);
+        setIsRefreshing(false);
       }
     }
   }, [difficulty]);
 
   React.useEffect(() => {
     const controller = new AbortController();
-    void load(controller.signal);
+    void load({ signal: controller.signal });
     return () => controller.abort();
+  }, [difficulty]); // load when difficulty changes
+
+  const [recStatus, setRecStatus] = React.useState(recommendationState.getStatus());
+
+  React.useEffect(() => {
+    return recommendationState.subscribeStatus((s) => setRecStatus(s));
+  }, []);
+
+  // Subscribe to recommendation invalidations
+  React.useEffect(() => {
+    return recommendationState.subscribeInvalidation(() => {
+      void load({ isSilent: true });
+    });
   }, [load]);
 
   // Persist triage state to DB with optimistic update
@@ -580,6 +640,16 @@ export function RecommendationsView() {
 
   return (
     <div className="space-y-3">
+      {(recStatus === "saving" || recStatus === "recalculating") && (
+        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          <Loader2Icon className="size-4 animate-spin text-primary shrink-0" aria-hidden="true" />
+          <div>
+            <p className="font-medium text-xs text-foreground">Updating recommendation results...</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Searching and filtering remain available during the update.</p>
+          </div>
+        </div>
+      )}
+
       {/* Filter row + keyboard hint */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <FilterPills
@@ -626,11 +696,13 @@ export function RecommendationsView() {
             </span>
             <button
               type="button"
-              onClick={() => void load()}
-              className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              onClick={() => void load({ isSilent: true })}
+              disabled={isRefreshing}
+              className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors inline-flex items-center gap-1"
               aria-label="Refresh recommendations"
             >
-              Refresh
+              {isRefreshing && <Loader2Icon className="size-3 animate-spin text-primary" aria-hidden="true" />}
+              {isRefreshing ? "Updating…" : "Refresh"}
             </button>
           </div>
 

@@ -29,6 +29,8 @@ export interface Recommendation {
   state: TriageState;
   issue: {
     id: string;
+    githubId?: string;
+    createdAt?: string;
     title: string;
     url: string;
     labels: string[];

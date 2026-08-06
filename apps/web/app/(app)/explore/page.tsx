@@ -11,6 +11,7 @@ import {
   SparklesIcon,
   ClockIcon,
   AlertCircleIcon,
+  Loader2Icon,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Difficulty, Recommendation } from "@/lib/types";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { FilterPills } from "@/components/shared/filter-pills";
+import { recommendationState } from "@/lib/recommendation-state";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,26 +43,54 @@ const DIFFICULTY_ORDER: Record<string, number> = {
 export default function ExplorePage() {
   const [allItems, setAllItems] = React.useState<Recommendation[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [diffFilter, setDiffFilter] = React.useState<Difficulty | undefined>();
   const [sortField, setSortField] = React.useState<SortField>("score");
   const [sortDir, setSortDir] = React.useState<SortDir>("desc");
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
+  const inFlightRef = React.useRef(false);
+
+  const load = React.useCallback(async (opts?: { isSilent?: boolean }) => {
+    if (inFlightRef.current && opts?.isSilent) return;
+    inFlightRef.current = true;
+
+    console.log("[Frontend] frontend refresh triggered");
+
+    if (!opts?.isSilent) {
+      setLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
     setError(null);
     try {
       const res = await api.getRecommendations();
+      console.log(`[Frontend] recommendations received: ${res.recommendations.length}`);
       setAllItems(res.recommendations);
+      console.log(`[Frontend] recommendation count after each update: ${res.recommendations.length}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load issues.");
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
+
+  const [recStatus, setRecStatus] = React.useState(recommendationState.getStatus());
+
+  React.useEffect(() => {
+    return recommendationState.subscribeStatus((s) => setRecStatus(s));
+  }, []);
+
+  React.useEffect(() => {
+    return recommendationState.subscribeInvalidation(() => {
+      void load({ isSilent: true });
+    });
+  }, [load]);
 
   function toggleSort(field: SortField) {
     if (sortField === field) {
@@ -85,15 +115,36 @@ export default function ExplorePage() {
     }
     return [...out].sort((a, b) => {
       let cmp = 0;
-      if (sortField === "score") cmp = a.score - b.score;
-      else if (sortField === "difficulty") {
-        cmp =
-          (DIFFICULTY_ORDER[a.issue.aiDifficulty ?? ""] ?? 99) -
-          (DIFFICULTY_ORDER[b.issue.aiDifficulty ?? ""] ?? 99);
+      if (sortField === "score") {
+        cmp = b.score - a.score;
+      } else if (sortField === "difficulty") {
+        const diffA = DIFFICULTY_ORDER[a.issue.aiDifficulty ?? ""] ?? 99;
+        const diffB = DIFFICULTY_ORDER[b.issue.aiDifficulty ?? ""] ?? 99;
+        cmp = diffA - diffB;
       } else if (sortField === "time") {
-        cmp = (a.issue.aiEstimatedTime ?? "").localeCompare(b.issue.aiEstimatedTime ?? "");
+        const timeA = a.issue.aiEstimatedTime ?? "";
+        const timeB = b.issue.aiEstimatedTime ?? "";
+        cmp = timeA.localeCompare(timeB);
       }
-      return sortDir === "desc" ? -cmp : cmp;
+
+      const primaryCmp = sortDir === "desc" ? cmp : -cmp;
+      if (primaryCmp !== 0) return primaryCmp;
+
+      // Tiebreaker 1: Higher score (if primary sort was difficulty or time)
+      if (sortField !== "score" && b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      // Tiebreaker 2: Newer GitHub issue first (createdAt desc)
+      const timeA = a.issue.createdAt ? new Date(a.issue.createdAt).getTime() : 0;
+      const timeB = b.issue.createdAt ? new Date(b.issue.createdAt).getTime() : 0;
+      const timeDiff = timeB - timeA;
+      if (timeDiff !== 0) return timeDiff;
+
+      // Tiebreaker 3: GitHub issue ID desc
+      const idA = a.issue.githubId || a.issue.id || "";
+      const idB = b.issue.githubId || b.issue.id || "";
+      return idB.localeCompare(idA, undefined, { numeric: true });
     });
   }, [allItems, diffFilter, search, sortField, sortDir]);
 
@@ -120,6 +171,16 @@ export default function ExplorePage() {
         description="Search and filter across every matched issue from your tracked repositories."
       />
 
+      {(recStatus === "saving" || recStatus === "recalculating") && (
+        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          <Loader2Icon className="size-4 animate-spin text-primary shrink-0" aria-hidden="true" />
+          <div>
+            <p className="font-medium text-xs text-foreground">Updating recommendation results...</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Searching and filtering remain available during the update.</p>
+          </div>
+        </div>
+      )}
+
       {/* Search + filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -142,11 +203,19 @@ export default function ExplorePage() {
       </div>
 
       {/* Results count */}
-      <p className="text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
-        {loading
-          ? "Loading…"
-          : `${filtered.length} ${filtered.length === 1 ? "issue" : "issues"}${search ? ` matching "${search}"` : ""}`}
-      </p>
+      <div className="flex items-center justify-between text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
+        <p>
+          {loading
+            ? "Loading…"
+            : `${filtered.length} ${filtered.length === 1 ? "issue" : "issues"}${search ? ` matching "${search}"` : ""}`}
+        </p>
+        {isRefreshing && (
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
+            <Loader2Icon className="size-3 animate-spin" aria-hidden="true" />
+            Updating issues…
+          </span>
+        )}
+      </div>
 
       {/* Table */}
       <div className="rounded-xl border border-border overflow-hidden" role="table" aria-label="Issues table">

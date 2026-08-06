@@ -43,19 +43,19 @@ const TRENDING: Array<{
   stars: string;
   category: string;
 }> = [
-  { fullName: "vercel/next.js", description: "The React Framework for the Web", language: "TypeScript", stars: "128k", category: "Web" },
-  { fullName: "shadcn-ui/ui", description: "Beautifully designed components", language: "TypeScript", stars: "82k", category: "Web" },
-  { fullName: "trpc/trpc", description: "End-to-end typesafe APIs", language: "TypeScript", stars: "35k", category: "Web" },
-  { fullName: "tailwindlabs/tailwindcss", description: "Utility-first CSS framework", language: "TypeScript", stars: "86k", category: "Web" },
-  { fullName: "prisma/prisma", description: "Next-generation ORM for Node.js & TypeScript", language: "TypeScript", stars: "40k", category: "DevTools" },
-  { fullName: "supabase/supabase", description: "The open source Firebase alternative", language: "TypeScript", stars: "77k", category: "DevTools" },
-  { fullName: "vitejs/vite", description: "Next generation frontend tooling", language: "TypeScript", stars: "70k", category: "DevTools" },
-  { fullName: "golang/go", description: "The Go programming language", language: "Go", stars: "125k", category: "Systems" },
-  { fullName: "rust-lang/rust", description: "Empowering everyone to build reliable software", language: "Rust", stars: "100k", category: "Systems" },
-  { fullName: "docker/compose", description: "Define and run multi-container apps", language: "Go", stars: "34k", category: "DevTools" },
-  { fullName: "astro-build/astro", description: "The web framework for content-driven websites", language: "TypeScript", stars: "48k", category: "Web" },
-  { fullName: "facebook/react", description: "The library for web and native user interfaces", language: "JavaScript", stars: "230k", category: "Web" },
-];
+    { fullName: "vercel/next.js", description: "The React Framework for the Web", language: "TypeScript", stars: "128k", category: "Web" },
+    { fullName: "shadcn-ui/ui", description: "Beautifully designed components", language: "TypeScript", stars: "82k", category: "Web" },
+    { fullName: "trpc/trpc", description: "End-to-end typesafe APIs", language: "TypeScript", stars: "35k", category: "Web" },
+    { fullName: "tailwindlabs/tailwindcss", description: "Utility-first CSS framework", language: "TypeScript", stars: "86k", category: "Web" },
+    { fullName: "prisma/prisma", description: "Next-generation ORM for Node.js & TypeScript", language: "TypeScript", stars: "40k", category: "DevTools" },
+    { fullName: "supabase/supabase", description: "The open source Firebase alternative", language: "TypeScript", stars: "77k", category: "DevTools" },
+    { fullName: "vitejs/vite", description: "Next generation frontend tooling", language: "TypeScript", stars: "70k", category: "DevTools" },
+    { fullName: "golang/go", description: "The Go programming language", language: "Go", stars: "125k", category: "Systems" },
+    { fullName: "rust-lang/rust", description: "Empowering everyone to build reliable software", language: "Rust", stars: "100k", category: "Systems" },
+    { fullName: "docker/compose", description: "Define and run multi-container apps", language: "Go", stars: "34k", category: "DevTools" },
+    { fullName: "astro-build/astro", description: "The web framework for content-driven websites", language: "TypeScript", stars: "48k", category: "Web" },
+    { fullName: "facebook/react", description: "The library for web and native user interfaces", language: "JavaScript", stars: "230k", category: "Web" },
+  ];
 
 function GithubIcon({ className }: { className?: string }) {
   return (

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
+import { recommendationState } from "@/lib/recommendation-state";
 import { CheckIcon, SparklesIcon, GitForkIcon, ArrowRightIcon, Loader2Icon } from "lucide-react";
 import { SelectablePill } from "@/components/shared/selectable-pill";
 import { cn } from "@/lib/utils";
@@ -76,9 +77,11 @@ export default function OnboardingPage() {
 
   async function handleFinish() {
     setSaving(true);
+    const saveTime = new Date();
     try {
       await api.updateMe({ skills, preferredLanguages: languages });
       await Promise.allSettled(selectedRepos.map((r) => api.addRepo(r)));
+      recommendationState.startRematchTracking(saveTime);
       router.push("/dashboard");
     } catch (err) {
       console.error(err);

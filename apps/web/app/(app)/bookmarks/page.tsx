@@ -11,6 +11,7 @@ import {
   AlertCircleIcon,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { recommendationState } from "@/lib/recommendation-state";
 import type { Difficulty, Recommendation, TriageState } from "@/lib/types";
 import { difficultyColor, difficultyLabel, scoreColor, formatScore } from "@/lib/issue-utils";
 import { cn } from "@/lib/utils";
@@ -130,8 +131,8 @@ export default function BookmarksPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState<"bookmarked" | "claimed">("bookmarked");
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
+  const load = React.useCallback(async (opts?: { isSilent?: boolean }) => {
+    if (!opts?.isSilent) setLoading(true);
     setError(null);
     try {
       const [bookRes, claimRes] = await Promise.all([
@@ -148,6 +149,12 @@ export default function BookmarksPage() {
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
+
+  React.useEffect(() => {
+    return recommendationState.subscribeInvalidation(() => {
+      void load({ isSilent: true });
+    });
+  }, [load]);
 
   async function remove(id: string, tab: "bookmarked" | "claimed") {
     if (tab === "bookmarked") {

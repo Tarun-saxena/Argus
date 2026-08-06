@@ -58,7 +58,11 @@ router.get("/", authMiddleware, async (req, res) => {
                     include: { repo: true },
                 },
             },
-            orderBy: { score: "desc" },
+            orderBy: [
+                { score: "desc" },
+                { issue: { createdAt: "desc" } },
+                { issue: { githubId: "desc" } },
+            ],
         });
 
         return res.json({
