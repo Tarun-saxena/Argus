@@ -129,6 +129,15 @@ export default function RepositoriesPage() {
   async function addRepo(name: string) {
     const trimmed = name.trim();
     if (!trimmed || submitting) return;
+
+    const isAlreadyTracked = repos.some(
+      (r) => r.fullName.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (isAlreadyTracked) {
+      setError("This repository is already added.");
+      return;
+    }
+
     setSubmitting(trimmed);
     setError(null);
     try {
@@ -371,7 +380,7 @@ export default function RepositoriesPage() {
                       {repo.language}
                     </span>
                     <span aria-hidden="true">·</span>
-                    <span className="font-mono" aria-label={`${repo.stars} stars`}>★ {repo.stars}</span>
+                    <span className="font-mono" aria-label={`${repo.stars} stars`}>{repo.stars} stars</span>
                     <span className="ml-auto px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
                       {repo.category}
                     </span>

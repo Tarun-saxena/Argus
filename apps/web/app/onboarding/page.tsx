@@ -309,7 +309,7 @@ export default function OnboardingPage() {
                       </p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground font-mono" aria-label={`${repo.stars} stars`}>
-                          ★ {repo.stars}
+                          {repo.stars} stars
                         </span>
                         <span className="text-xs text-muted-foreground" aria-hidden="true">·</span>
                         <span className="text-xs text-muted-foreground">{repo.language}</span>
