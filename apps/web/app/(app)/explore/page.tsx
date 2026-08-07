@@ -14,7 +14,7 @@ import {
   Loader2Icon,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Difficulty, Recommendation } from "@/lib/types";
+import type { Difficulty } from "@/lib/types";
 import { difficultyColor, difficultyLabel, scoreColor, formatScore } from "@/lib/issue-utils";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,7 +24,7 @@ import { recommendationState } from "@/lib/recommendation-state";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type SortField = "score" | "time" | "difficulty";
+type SortField = "score" | "time" | "difficulty" | "recent";
 type SortDir = "asc" | "desc";
 
 const DIFFICULTY_OPTIONS: Array<{ value: Difficulty | undefined; label: string }> = [
@@ -34,51 +34,107 @@ const DIFFICULTY_OPTIONS: Array<{ value: Difficulty | undefined; label: string }
   { value: "ADVANCED", label: "Advanced" },
 ];
 
-const DIFFICULTY_ORDER: Record<string, number> = {
-  BEGINNER: 0,
-  INTERMEDIATE: 1,
-  ADVANCED: 2,
-};
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
 
 export default function ExplorePage() {
-  const [allItems, setAllItems] = React.useState<Recommendation[]>([]);
+  const [items, setItems] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
   const [diffFilter, setDiffFilter] = React.useState<Difficulty | undefined>();
   const [sortField, setSortField] = React.useState<SortField>("score");
   const [sortDir, setSortDir] = React.useState<SortDir>("desc");
+  const [trackedOnly, setTrackedOnly] = React.useState(false);
+  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
+  const [hasMore, setHasMore] = React.useState(false);
 
   const inFlightRef = React.useRef(false);
 
-  const load = React.useCallback(async (opts?: { isSilent?: boolean }) => {
-    if (inFlightRef.current && opts?.isSilent) return;
+  // Debounce search input changes
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search]);
+
+  const load = React.useCallback(async (opts?: { isSilent?: boolean; append?: boolean; useCursor?: string | null }) => {
+    if (inFlightRef.current && opts?.isSilent && !opts.append) return;
     inFlightRef.current = true;
 
-    console.log("[Frontend] frontend refresh triggered");
-
-    if (!opts?.isSilent) {
+    if (opts?.append) {
+      setLoadingMore(true);
+    } else if (!opts?.isSilent) {
       setLoading(true);
     } else {
       setIsRefreshing(true);
     }
     setError(null);
+
+    const apiSortBy =
+      sortField === "score"
+        ? "matchScore"
+        : sortField === "difficulty"
+        ? "difficulty"
+        : sortField === "recent"
+        ? "recent"
+        : "estimatedTime";
+
     try {
-      const res = await api.getRecommendations();
-      console.log(`[Frontend] recommendations received: ${res.recommendations.length}`);
-      setAllItems(res.recommendations);
-      console.log(`[Frontend] recommendation count after each update: ${res.recommendations.length}`);
+      const res = await api.exploreIssues({
+        search: debouncedSearch.trim() || undefined,
+        difficulty: diffFilter,
+        sortBy: apiSortBy,
+        sortDir: sortDir,
+        trackedOnly: trackedOnly,
+        cursor: opts?.useCursor || undefined,
+        limit: 20,
+      });
+
+      if (opts?.append) {
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const newItems = res.items.filter((i: any) => !existingIds.has(i.id));
+          return [...prev, ...newItems];
+        });
+      } else {
+        setItems(res.items);
+      }
+      setNextCursor(res.nextCursor);
+      setHasMore(res.hasMore);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load issues.");
     } finally {
       inFlightRef.current = false;
       setLoading(false);
+      setLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [debouncedSearch, diffFilter, sortField, sortDir, trackedOnly]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  // Trigger full reset load when parameters change
+  React.useEffect(() => {
+    void load();
+  }, [load]);
 
   const [recStatus, setRecStatus] = React.useState(recommendationState.getStatus());
 
@@ -97,56 +153,15 @@ export default function ExplorePage() {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
-      setSortDir("desc");
+      // default score/time/recent to desc, difficulty to asc
+      setSortDir(field === "difficulty" ? "asc" : "desc");
     }
   }
 
-  const filtered = React.useMemo(() => {
-    let out = allItems;
-    if (diffFilter) out = out.filter((r) => r.issue.aiDifficulty === diffFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      out = out.filter(
-        (r) =>
-          r.issue.title.toLowerCase().includes(q) ||
-          r.issue.repo.fullName.toLowerCase().includes(q) ||
-          r.issue.aiSkillsRequired.some((s) => s.toLowerCase().includes(q))
-      );
-    }
-    return [...out].sort((a, b) => {
-      let cmp = 0;
-      if (sortField === "score") {
-        cmp = b.score - a.score;
-      } else if (sortField === "difficulty") {
-        const diffA = DIFFICULTY_ORDER[a.issue.aiDifficulty ?? ""] ?? 99;
-        const diffB = DIFFICULTY_ORDER[b.issue.aiDifficulty ?? ""] ?? 99;
-        cmp = diffA - diffB;
-      } else if (sortField === "time") {
-        const timeA = a.issue.aiEstimatedTime ?? "";
-        const timeB = b.issue.aiEstimatedTime ?? "";
-        cmp = timeA.localeCompare(timeB);
-      }
-
-      const primaryCmp = sortDir === "desc" ? cmp : -cmp;
-      if (primaryCmp !== 0) return primaryCmp;
-
-      // Tiebreaker 1: Higher score (if primary sort was difficulty or time)
-      if (sortField !== "score" && b.score !== a.score) {
-        return b.score - a.score;
-      }
-
-      // Tiebreaker 2: Newer GitHub issue first (createdAt desc)
-      const timeA = a.issue.createdAt ? new Date(a.issue.createdAt).getTime() : 0;
-      const timeB = b.issue.createdAt ? new Date(b.issue.createdAt).getTime() : 0;
-      const timeDiff = timeB - timeA;
-      if (timeDiff !== 0) return timeDiff;
-
-      // Tiebreaker 3: GitHub issue ID desc
-      const idA = a.issue.githubId || a.issue.id || "";
-      const idB = b.issue.githubId || b.issue.id || "";
-      return idB.localeCompare(idA, undefined, { numeric: true });
-    });
-  }, [allItems, diffFilter, search, sortField, sortDir]);
+  function handleLoadMore() {
+    if (loadingMore || !nextCursor) return;
+    void load({ append: true, useCursor: nextCursor });
+  }
 
   function SortIcon({ field }: { field: SortField }) {
     if (sortField !== field) return <ArrowUpDownIcon className="size-3 opacity-40" aria-hidden="true" />;
@@ -194,12 +209,25 @@ export default function ExplorePage() {
             className="w-full h-9 pl-9 pr-4 text-sm rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
           />
         </div>
-        <FilterPills
-          aria-label="Filter by difficulty"
-          options={DIFFICULTY_OPTIONS}
-          activeValue={diffFilter}
-          onChange={(v) => setDiffFilter(v as Difficulty | undefined)}
-        />
+        <div className="flex flex-wrap gap-2 items-center">
+          <FilterPills
+            aria-label="Filter by difficulty"
+            options={DIFFICULTY_OPTIONS}
+            activeValue={diffFilter}
+            onChange={(v) => setDiffFilter(v as Difficulty | undefined)}
+          />
+          <button
+            onClick={() => setTrackedOnly(!trackedOnly)}
+            className={cn(
+              "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold transition-all",
+              trackedOnly
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground bg-card"
+            )}
+          >
+            Tracked Only
+          </button>
+        </div>
       </div>
 
       {/* Results count */}
@@ -207,7 +235,7 @@ export default function ExplorePage() {
         <p>
           {loading
             ? "Loading…"
-            : `${filtered.length} ${filtered.length === 1 ? "issue" : "issues"}${search ? ` matching "${search}"` : ""}`}
+            : `${items.length} ${items.length === 1 ? "issue" : "issues"}${search ? ` matching "${search}"` : ""}`}
         </p>
         {isRefreshing && (
           <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
@@ -218,11 +246,11 @@ export default function ExplorePage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border overflow-hidden" role="table" aria-label="Issues table">
+      <div className="rounded-xl border border-border bg-card overflow-hidden" role="table" aria-label="Issues table">
         {/* Table header */}
         <div
           role="row"
-          className="grid grid-cols-[1fr_160px_100px_80px] gap-4 px-4 py-3 border-b border-border bg-card/50"
+          className="grid grid-cols-[1fr_150px_140px_120px_80px] gap-4 px-4 py-3 border-b border-border bg-muted/40"
         >
           <span role="columnheader" className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Title
@@ -242,6 +270,15 @@ export default function ExplorePage() {
           <button
             role="columnheader"
             type="button"
+            onClick={() => toggleSort("recent")}
+            aria-sort={sortField === "recent" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+            className={sortHeaderClass("recent")}
+          >
+            Age <SortIcon field="recent" />
+          </button>
+          <button
+            role="columnheader"
+            type="button"
             onClick={() => toggleSort("score")}
             aria-sort={sortField === "score" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
             className={cn(sortHeaderClass("score"), "justify-end")}
@@ -254,10 +291,11 @@ export default function ExplorePage() {
         {loading ? (
           <div role="rowgroup" aria-busy="true" aria-label="Loading issues">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} role="row" className="grid grid-cols-[1fr_160px_100px_80px] gap-4 px-4 py-3.5 border-b border-border/40">
+              <div key={i} role="row" className="grid grid-cols-[1fr_150px_140px_120px_80px] gap-4 px-4 py-3.5 border-b border-border/40">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-4 w-16" />
                 <Skeleton className="h-4 w-10 ml-auto" />
               </div>
             ))}
@@ -268,7 +306,7 @@ export default function ExplorePage() {
             <p className="text-sm">{error}</p>
             <button onClick={() => void load()} className="ml-auto text-xs underline" aria-label="Retry loading">Retry</button>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : items.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground"
             role="status"
@@ -283,11 +321,12 @@ export default function ExplorePage() {
         ) : (
           <div role="rowgroup">
             <AnimatePresence initial={false}>
-              {filtered.map((rec, idx) => {
-                const score = Math.round(rec.score);
+              {items.map((item, idx) => {
+                const score = Math.round(item.score);
+                const difficulty = item.aiDifficulty;
                 return (
                   <motion.div
-                    key={rec.id}
+                    key={item.id}
                     role="row"
                     layout
                     initial={{ opacity: 0 }}
@@ -295,20 +334,24 @@ export default function ExplorePage() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
                     className={cn(
-                      "grid grid-cols-[1fr_160px_100px_80px] gap-4 px-4 py-3.5 border-b border-border/40 hover:bg-muted/30 transition-colors cursor-pointer group",
-                      idx === filtered.length - 1 && "border-b-0"
+                      "grid grid-cols-[1fr_150px_140px_120px_80px] gap-4 px-4 py-3.5 border-b border-border/40 hover:bg-muted/30 transition-colors cursor-pointer group border-l-2",
+                      difficulty === "BEGINNER" && "border-l-emerald-500 dark:border-l-emerald-400",
+                      difficulty === "INTERMEDIATE" && "border-l-amber-500 dark:border-l-amber-400",
+                      difficulty === "ADVANCED" && "border-l-red-500 dark:border-l-red-400",
+                      !difficulty && "border-l-transparent",
+                      idx === items.length - 1 && "border-b-0"
                     )}
-                    onClick={() => window.open(rec.issue.url, "_blank")}
-                    aria-label={`Open issue: ${rec.issue.title}`}
+                    onClick={() => window.open(item.url, "_blank")}
+                    aria-label={`Open issue: ${item.title}`}
                   >
                     {/* Title cell */}
                     <div role="cell" className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                        {rec.issue.title}
+                        {item.title}
                       </p>
-                      {rec.issue.aiSkillsRequired.length > 0 && (
+                      {(item.aiSkillsRequired || []).length > 0 && (
                         <div className="flex gap-1.5 mt-1 flex-wrap" aria-label="Skills">
-                          {rec.issue.aiSkillsRequired.slice(0, 3).map((s) => (
+                          {(item.aiSkillsRequired || []).slice(0, 3).map((s: string) => (
                             <span
                               key={s}
                               className="text-xs px-1.5 py-px rounded border border-border/50 text-muted-foreground font-mono"
@@ -316,9 +359,9 @@ export default function ExplorePage() {
                               {s}
                             </span>
                           ))}
-                          {rec.issue.aiSkillsRequired.length > 3 && (
+                          {(item.aiSkillsRequired || []).length > 3 && (
                             <span className="text-xs text-muted-foreground">
-                              +{rec.issue.aiSkillsRequired.length - 3}
+                              +{(item.aiSkillsRequired || []).length - 3}
                             </span>
                           )}
                         </div>
@@ -328,22 +371,52 @@ export default function ExplorePage() {
                     {/* Repo cell */}
                     <div role="cell" className="self-center">
                       <span className="text-xs font-mono text-muted-foreground truncate">
-                        {rec.issue.repo.fullName}
+                        {item.repo.fullName}
                       </span>
                     </div>
 
-                    {/* Difficulty cell */}
-                    <div role="cell" className="self-center">
-                      {rec.issue.aiDifficulty ? (
+                    {/* Difficulty & State cell */}
+                    <div role="cell" className="flex items-center gap-1.5 flex-wrap self-center">
+                      {item.aiDifficulty ? (
                         <span className={cn(
                           "text-xs font-medium px-2 py-0.5 rounded-full border",
-                          difficultyColor(rec.issue.aiDifficulty)
+                          difficultyColor(item.aiDifficulty)
                         )}>
-                          {difficultyLabel(rec.issue.aiDifficulty)}
+                          {difficultyLabel(item.aiDifficulty)}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground" aria-label="No difficulty data">—</span>
                       )}
+                      {item.matchState === "BOOKMARKED" && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary font-semibold">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M5 3a2 2 0 00-2 2v14l7-4 7 4V5a2 2 0 00-2-2H5z" />
+                          </svg>
+                          Saved
+                        </span>
+                      )}
+                      {item.matchState === "CLAIMED" && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 font-semibold">
+                          Claimed
+                        </span>
+                      )}
+                      {item.matchState === "IGNORED" && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground font-semibold">
+                          Ignored
+                        </span>
+                      )}
+                      {item.matchState === "INBOX" && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 font-semibold">
+                          Tracked
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Age cell */}
+                    <div role="cell" className="self-center">
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {formatRelativeTime(item.githubCreatedAt)}
+                      </span>
                     </div>
 
                     {/* Match score cell */}
@@ -363,6 +436,19 @@ export default function ExplorePage() {
           </div>
         )}
       </div>
+
+      {hasMore && (
+        <div className="flex justify-center pt-6">
+          <button
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg border border-border bg-card hover:bg-muted text-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore && <Loader2Icon className="size-3 animate-spin text-primary" aria-hidden="true" />}
+            {loadingMore ? "Loading..." : "Load More"}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

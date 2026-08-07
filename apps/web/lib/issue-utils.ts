@@ -1,12 +1,15 @@
 import type { Difficulty, TriageState } from "./types";
 
+export const SCORE_HIGH_THRESHOLD = 80;
+export const SCORE_MEDIUM_THRESHOLD = 50;
+
 /**
  * Returns Tailwind class string for a difficulty badge.
  */
 export function difficultyColor(d: Difficulty | null): string {
-  if (d === "BEGINNER") return "text-emerald-400 bg-emerald-400/10 border-emerald-400/20";
-  if (d === "INTERMEDIATE") return "text-amber-400 bg-amber-400/10 border-amber-400/20";
-  if (d === "ADVANCED") return "text-red-400 bg-red-400/10 border-red-400/20";
+  if (d === "BEGINNER") return "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+  if (d === "INTERMEDIATE") return "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20";
+  if (d === "ADVANCED") return "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20";
   return "text-muted-foreground bg-muted border-border";
 }
 
@@ -22,10 +25,9 @@ export function difficultyLabel(d: Difficulty | null): string {
  * Returns a Tailwind text color class based on a 0-100 match score.
  */
 export function scoreColor(s: number): string {
-  if (s >= 90) return "text-violet-400";
-  if (s >= 70) return "text-blue-400";
-  if (s >= 50) return "text-amber-400";
-  return "text-muted-foreground";
+  if (s >= SCORE_HIGH_THRESHOLD) return "text-emerald-600 dark:text-emerald-400 font-bold";
+  if (s >= SCORE_MEDIUM_THRESHOLD) return "text-amber-600 dark:text-amber-400 font-semibold";
+  return "text-muted-foreground font-normal";
 }
 
 /**

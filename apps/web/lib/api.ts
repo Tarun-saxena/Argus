@@ -41,7 +41,7 @@ export const api = {
     apiFetch<Repository>("/repos", { method: "POST", body: JSON.stringify({ fullName }) }),
   getRepos: (options?: RequestInit) => apiFetch<Repository[]>("/repos", options),
   getRecommendations: (
-    params?: { difficulty?: Difficulty; issueType?: string; state?: TriageState },
+    params?: { difficulty?: Difficulty; issueType?: string; state?: TriageState | "ALL" },
     options?: RequestInit
   ) => {
     const query = new URLSearchParams();
@@ -50,6 +50,35 @@ export const api = {
     if (params?.state) query.set("state", params.state);
     const suffix = query.size ? `?${query}` : "";
     return apiFetch<RecommendationsResponse>(`/recommendations${suffix}`, options);
+  },
+  exploreIssues: (
+    params?: {
+      cursor?: string;
+      limit?: number;
+      search?: string;
+      skill?: string;
+      difficulty?: Difficulty;
+      sortBy?: "matchScore" | "difficulty" | "createdAt" | "estimatedTime" | "recent";
+      sortDir?: "asc" | "desc";
+      trackedOnly?: boolean;
+    },
+    options?: RequestInit
+  ) => {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set("cursor", params.cursor);
+    if (params?.limit !== undefined) query.set("limit", params.limit.toString());
+    if (params?.search) query.set("search", params.search);
+    if (params?.skill) query.set("skill", params.skill);
+    if (params?.difficulty) query.set("difficulty", params.difficulty);
+    if (params?.sortBy) query.set("sortBy", params.sortBy);
+    if (params?.sortDir) query.set("sortDir", params.sortDir);
+    if (params?.trackedOnly !== undefined) query.set("trackedOnly", params.trackedOnly.toString());
+    const suffix = query.size ? `?${query}` : "";
+    return apiFetch<{
+      items: any[];
+      nextCursor: string | null;
+      hasMore: boolean;
+    }>(`/issues/explore${suffix}`, options);
   },
   // Persists a triage action (bookmark / claim / ignore / inbox) to the DB.
   updateRecommendationState: (id: string, state: TriageState) =>

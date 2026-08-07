@@ -409,7 +409,7 @@ function IssueDetail({
 function LoadingSkeleton() {
   return (
     <div className="flex h-[calc(100vh-10rem)] rounded-xl border border-border overflow-hidden" aria-label="Loading recommendations" aria-busy="true">
-      <div className="w-[40%] border-r border-border space-y-0">
+      <div className="w-[40%] border-r border-border space-y-0 bg-card">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="pl-4 pr-4 py-4 border-b border-border/40 space-y-2">
             <Skeleton className="h-3 w-28" />
@@ -422,7 +422,7 @@ function LoadingSkeleton() {
           </div>
         ))}
       </div>
-      <div className="flex-1 p-5 space-y-5">
+      <div className="flex-1 p-5 space-y-5 bg-card">
         <Skeleton className="h-6 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
         <div className="flex gap-2">
@@ -468,7 +468,7 @@ export function RecommendationsView() {
     setError(null);
     try {
       const [recsResponse, reposResponse] = await Promise.all([
-        api.getRecommendations({ difficulty }, { signal: opts?.signal }),
+        api.getRecommendations({ difficulty, state: "INBOX" }, { signal: opts?.signal }),
         api.getRepos({ signal: opts?.signal }),
       ]);
       
@@ -535,7 +535,10 @@ export function RecommendationsView() {
   }, [load]);
 
   // Persist triage state to DB with optimistic update
-  async function triage(id: string, newState: TriageState) {
+  async function triage(id: string, targetState: TriageState) {
+    const current = items.find((r) => r.id === id);
+    const newState: TriageState = (current?.state === targetState || current?.pendingState === targetState) ? "INBOX" : targetState;
+
     setItems((prev) =>
       prev.map((r) => (r.id === id ? { ...r, pendingState: newState } : r))
     );
