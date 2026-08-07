@@ -13,7 +13,7 @@ const filterSchema = z.object({
         .enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"])
         .optional(),
     issueType: z.string().optional(),
-    state: z.enum(TRIAGE_STATES).optional(),
+    state: z.string().optional(),
 });
 
 const patchSchema = z.object({
@@ -22,8 +22,9 @@ const patchSchema = z.object({
 
 // GET /recommendations
 // Query params: difficulty, issueType, state
-// - With ?state=X  → return only recommendations in that state
-// - Without ?state → return everything EXCEPT IGNORED (default feed)
+// - state=INBOX (or omitted) → return untriaged INBOX recommendations (default Feed)
+// - state=ALL                → return all recommendations across all triage states (Explore view)
+// - state=BOOKMARKED/CLAIMED → return only recommendations in that state
 router.get("/", authMiddleware, async (req, res) => {
     try {
         const parsed = filterSchema.safeParse(req.query);
@@ -34,17 +35,16 @@ router.get("/", authMiddleware, async (req, res) => {
 
         const { difficulty, issueType, state } = parsed.data;
 
-        // Build the state filter:
-        // - Explicit state requested  → match that exact state
-        // - No state param            → exclude IGNORED only (show INBOX + BOOKMARKED + CLAIMED in feed)
-        const stateFilter: Prisma.RecommendationWhereInput["state"] = state
-            ? state
-            : { not: "IGNORED" as TriageState };
+        // state=ALL -> no state filter; state=INBOX or omitted -> state: "INBOX"
+        const targetState = state ?? "INBOX";
+        const stateWhere = targetState === "ALL" || targetState === "all"
+            ? undefined
+            : (targetState as TriageState);
 
         const recommendations = await prisma.recommendation.findMany({
             where: {
                 userId: req.userId as string,
-                state: stateFilter,
+                ...(stateWhere && { state: stateWhere }),
                 issue: {
                     status: "OPEN",
                     ...(difficulty && { aiDifficulty: difficulty }),
@@ -60,6 +60,7 @@ router.get("/", authMiddleware, async (req, res) => {
             },
             orderBy: [
                 { score: "desc" },
+                { issue: { githubCreatedAt: "desc" } },
                 { issue: { createdAt: "desc" } },
                 { issue: { githubId: "desc" } },
             ],
@@ -97,13 +98,20 @@ router.patch("/:id", authMiddleware, async (req, res) => {
 
         const { state } = parsed.data;
 
-        // Update is scoped to { id AND userId } — if either doesn't match,
-        // Prisma throws P2025 (record not found), handled in the catch block.
-        const updated = await prisma.recommendation.update({
+        // First verify recommendation exists and belongs to the authenticated user
+        const existing = await prisma.recommendation.findFirst({
             where: {
                 id,
-                userId: req.userId as string,   // ownership enforced here
+                userId: req.userId as string,
             },
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: "Recommendation not found or access denied" });
+        }
+
+        const updated = await prisma.recommendation.update({
+            where: { id },
             data: { state },
             select: { id: true, state: true, score: true },
         });
