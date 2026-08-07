@@ -1,159 +1,198 @@
-# Turborepo starter
+# Argus
 
-This Turborepo starter is maintained by the Turborepo core team.
+**Find open-source issues that actually fit you.**
 
-## Using this example
+Argus continuously scans GitHub repositories, uses AI to analyze every open issue for difficulty and required skills, and recommends the ones that genuinely match your experience — no more scrolling through hundreds of stale "good first issue" labels hoping for the best.
 
-Run the following command:
+---
 
-```sh
-npx create-turbo@latest
+## Why Argus exists
+
+Contributing to open source sounds simple until you actually try it. `good-first-issue` labels are often stale, already claimed, or quietly require deep codebase knowledge. Searching manually means opening dozens of repos, filtering by label, and reading through issue threads just to figure out if something is worth your time. Argus removes that friction — it does the searching, reading, and ranking for you.
+
+## How it works
+
+1. **Sign in with GitHub** — OAuth login, no separate account needed.
+2. **Set your skills** — languages, frameworks, and tools you actually know.
+3. **Track repositories** — add any public GitHub repo you care about.
+4. **Argus does the rest** — a background worker polls each repo every few minutes, runs every new issue through Gemini for difficulty/skill/summary analysis, and scores it against your profile.
+5. **Triage your feed** — browse your personalized inbox, bookmark issues for later, claim ones you're working on, or ignore ones that aren't a fit.
+
+---
+
+## Architecture
+
+Argus is a Turborepo monorepo with three independently running services sharing a Postgres database and a Redis-backed job queue.
+
+```
+┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│   web        │──────│ http-server  │──────│  Postgres   │
+│  (Next.js)   │      │  (Express)   │      │   (Neon)    │
+└─────────────┘      └──────┬───────┘      └──────┬──────┘
+                             │                      │
+                             │ enqueues jobs         │ reads/writes
+                             ▼                      │
+                      ┌─────────────┐               │
+                      │    Redis     │               │
+                      │  (BullMQ)    │               │
+                      └──────┬───────┘               │
+                             │                      │
+                             ▼                      │
+                      ┌─────────────┐               │
+                      │   worker     │───────────────┘
+                      │  (BullMQ)    │
+                      └──────────────┘
+                             │
+                    polls GitHub, calls Gemini
 ```
 
-## What's inside?
+- **`web`** — the Next.js frontend. Landing page, dashboard feed, repo management, settings, and triage UI.
+- **`http-server`** — the Express API. Handles GitHub OAuth, JWT session cookies, and all REST endpoints the frontend calls.
+- **`worker`** — a standalone Node process running BullMQ workers. Polls GitHub for new issues, runs AI analysis on each one, and scores/matches issues against every user's profile.
+- **Postgres (via Prisma + Neon)** — the single source of truth for users, repos, issues, and recommendations.
+- **Redis (via BullMQ)** — the job queue coordinating work between `http-server` and `worker` without either needing to know about the other directly.
 
-This Turborepo includes the following packages/apps:
+None of `http-server`'s requests block on slow work (GitHub polling, AI calls) — everything expensive is pushed onto the queue and handled asynchronously by `worker`.
 
-### Apps and Packages
+---
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Tech stack
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 16, React, Tailwind CSS, shadcn/ui |
+| Backend API | Express, TypeScript |
+| Background jobs | BullMQ, Redis |
+| Database | PostgreSQL (Neon), Prisma ORM |
+| AI analysis | Google Gemini |
+| Auth | GitHub OAuth, JWT (httpOnly cookies) |
+| Monorepo tooling | Turborepo, npm workspaces |
 
-### Utilities
+---
 
-This Turborepo has some additional tools already setup for you:
+## Core features
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+- **AI-powered issue analysis** — every issue is scored for difficulty (Beginner / Intermediate / Advanced), summarized in plain English, and tagged with the skills and files it likely touches.
+- **Personalized match scoring** — a 0–100 score per issue per user, based on language match, AI-detected skill overlap, and issue freshness.
+- **Real-time-ish polling** — tracked repos are re-polled every few minutes using GitHub's ETag headers, so re-checks that find nothing new don't burn API rate limit.
+- **Triage workflow** — issues move through Inbox → Bookmarked / Claimed / Ignored states, with keyboard shortcuts (`J`/`K` to navigate, `B`/`C`/`I` to triage) for fast daily use.
+- **Explore view** — a searchable, sortable table across every matched issue regardless of triage state, for broader browsing.
+- **Automatic re-matching** — updating your skills or languages in Settings triggers a background rematch across all currently analyzed issues, so your feed reflects your latest profile without needing to wait for new issues to arrive.
 
-### Build
+---
 
-To build all apps and packages, run the following command:
+## Getting started
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### Prerequisites
 
-```sh
-cd my-turborepo
-turbo build
+- Node.js 20+
+- Docker (for local Redis)
+- A [Neon](https://neon.tech) Postgres database (or any Postgres instance)
+- A GitHub OAuth App ([create one here](https://github.com/settings/developers))
+- A [Gemini API key](https://aistudio.google.com/app/apikey)
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/Tarun-saxena/Argus.git
+cd Argus
+npm install
 ```
 
-Without global `turbo`, use your package manager:
+### 2. Start Redis
 
-```sh
-cd my-turborepo
-npx turbo build
-npm dlx turbo build
-npm exec turbo build
+```bash
+docker compose up -d redis
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+### 3. Configure environment variables
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+Each app needs its own `.env` file.
 
-```sh
-turbo build --filter=docs
+**`apps/http-server/.env`**
+```env
+DATABASE_URL="postgresql://user:password@host/db?sslmode=require"
+REDIS_URL=redis://localhost:6380
+JWT_SECRET=some_long_random_string
+GITHUB_CLIENT_ID=your_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+GITHUB_CALLBACK_URL=http://localhost:4000/auth/github/callback
+FRONTEND_URL=http://localhost:3000
 ```
 
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-npm exec turbo build --filter=docs
-npm exec turbo build --filter=docs
+**`apps/worker/.env`**
+```env
+DATABASE_URL="postgresql://user:password@host/db?sslmode=require"
+REDIS_URL=redis://localhost:6380
+GITHUB_TOKEN=your_github_personal_access_token
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
+**`apps/web/.env.local`**
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
-Without global `turbo`, use your package manager:
+> `GITHUB_TOKEN` is optional but strongly recommended — unauthenticated GitHub API requests are capped at 60/hour, versus 5,000/hour with a personal access token.
 
-```sh
-cd my-turborepo
-npx turbo dev
-npm exec turbo dev
-npm exec turbo dev
+### 4. Set up the database
+
+```bash
+cd packages/db
+npx prisma migrate dev
+npx prisma generate
+cd ../..
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+### 5. Register a GitHub OAuth App
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+At [github.com/settings/developers](https://github.com/settings/developers):
+- **Homepage URL**: `http://localhost:3000`
+- **Authorization callback URL**: `http://localhost:4000/auth/github/callback`
 
-```sh
-turbo dev --filter=web
+Copy the generated Client ID and Secret into `apps/http-server/.env`.
+
+### 6. Run everything
+
+```bash
+npm run dev
 ```
 
-Without global `turbo`:
+This starts `web` (port 3000), `http-server` (port 4000), and `worker` together via Turborepo.
 
-```sh
-npx turbo dev --filter=web
-npm exec turbo dev --filter=web
-npm exec turbo dev --filter=web
+Visit **http://localhost:3000**, sign in with GitHub, set your skills, add a repo, and Argus will start polling and analyzing issues in the background.
+
+---
+
+## Project structure
+
+```
+Argus/
+├── apps/
+│   ├── web/            # Next.js frontend
+│   ├── http-server/     # Express API — auth, repos, recommendations
+│   └── worker/          # BullMQ workers — polling, AI analysis, matching
+├── packages/
+│   ├── db/              # Prisma schema, migrations, shared client
+│   └── queue/           # Shared BullMQ queue + Redis connection
+├── docker-compose.yml   # Local Redis
+└── turbo.json
 ```
 
-### Remote Caching
+---
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## How matching works
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+Each analyzed issue is scored per user out of a set of weighted signals:
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+- **Language match** — does the repo's primary language appear in the user's preferred languages?
+- **AI-detected skill overlap** — how many of the skills Gemini flagged as required match the user's listed skills?
+- **Freshness** — newer issues score higher, since older open issues are more likely stale or already claimed.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Scores are normalized to 0–100. Recommendations below a minimum threshold aren't shown. Updating your profile triggers a full rematch across every currently-analyzed open issue.
 
-```sh
-cd my-turborepo
-turbo login
-```
+---
 
-Without global `turbo`, use your package manager:
+## License
 
-```sh
-cd my-turborepo
-npx turbo login
-npm exec turbo login
-npm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-npm exec turbo link
-npm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+MIT
