@@ -140,7 +140,11 @@ export const aiAnalysisWorker = new Worker(
     },
     {
         connection: redisConnection,
-        concurrency: 2,
+        concurrency: 1,
+        limiter: {
+            max: 12,
+            duration: 60000,
+        },
     }
 );
 

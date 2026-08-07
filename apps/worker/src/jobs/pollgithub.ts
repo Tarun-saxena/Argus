@@ -51,8 +51,9 @@ async function pollRepo(repoId: string) {
         issueId: issue.id,
       }, {
         jobId: `ai-${issue.id}`,
-        attempts: 2,
+        attempts: 5,
         backoff: { type: "exponential", delay: 60000 },
+        removeOnComplete: true,
       });
     };
 
@@ -76,6 +77,7 @@ async function pollRepo(repoId: string) {
         labels: issue.labels.map((l: any) => l.name),
         url: issue.html_url,
         status: "OPEN",
+        githubCreatedAt: new Date(issue.created_at),
       },
       create: {
         githubId: String(issue.id),
@@ -85,6 +87,7 @@ async function pollRepo(repoId: string) {
         labels: issue.labels.map((l: any) => l.name),
         url: issue.html_url,
         status: "OPEN",
+        githubCreatedAt: new Date(issue.created_at),
       },
     });
 
@@ -94,8 +97,9 @@ async function pollRepo(repoId: string) {
         issueId: saved.id,
       }, {
         jobId: `ai-${saved.id}`,
-        attempts: 2,
+        attempts: 5,
         backoff: { type: "exponential", delay: 60000 },
+        removeOnComplete: true,
       });
     }
   }
