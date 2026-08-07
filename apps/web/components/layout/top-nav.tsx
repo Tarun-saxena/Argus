@@ -16,12 +16,9 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { UserMenu } from "@/components/layout/user-menu"
-import { SearchButton } from "@/components/layout/search-button"
-import { CommandPalette } from "@/components/layout/command-palette"
 
 export function TopNav() {
   const pathname = usePathname()
-  const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
 
   const navLinks = [
@@ -43,17 +40,6 @@ export function TopNav() {
         {/* Left section: Logo + Nav links */}
         <div className="flex items-center gap-8">
           <Link href="/dashboard" className="flex items-center gap-2 font-sans select-none">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="size-4.5 text-accent-bright fill-accent-bright/10"
-            >
-              <path d="M12 2L2 12l10 10 10-10L12 2z" />
-            </svg>
             <span className="text-sm font-bold tracking-tight text-foreground">Argus</span>
           </Link>
 
@@ -77,23 +63,13 @@ export function TopNav() {
           </nav>
         </div>
 
-        {/* Right section: Search + Theme Toggle + User Menu (Desktop) / Hamburger (Mobile) */}
-        <div className="flex items-center gap-3">
-          {/* Desktop Search */}
-          <div className="hidden md:block">
-            <SearchButton onClick={() => setCommandPaletteOpen(true)} />
-          </div>
-
-          {/* Theme Toggle & User Menu */}
-          <div className="flex items-center gap-1.5">
-            <ThemeToggle />
-            <div className="hidden md:block">
-              <UserMenu />
-            </div>
-          </div>
+        {/* Right section: Theme Toggle + User Menu (Visible everywhere) + Hamburger (Mobile) */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <ThemeToggle />
+          <UserMenu />
 
           {/* Mobile Hamburger menu */}
-          <div className="block md:hidden">
+          <div className="block md:hidden ml-1">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger
                 render={
@@ -111,17 +87,12 @@ export function TopNav() {
                         className="flex items-center gap-2 select-none"
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="size-4.5 text-accent-bright fill-accent-bright/10"
-                        >
-                          <path d="M12 2L2 12l10 10 10-10L12 2z" />
-                        </svg>
+                        <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center shrink-0">
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="white" strokeWidth="1.2" fill="none" />
+                            <circle cx="8" cy="8" r="2" fill="white" />
+                          </svg>
+                        </div>
                         <span className="text-sm font-bold tracking-tight text-foreground">Argus</span>
                       </Link>
                       <SheetClose
@@ -131,16 +102,6 @@ export function TopNav() {
                       >
                         <XIcon className="size-3.5" />
                       </SheetClose>
-                    </div>
-
-                    {/* Mobile Search Button */}
-                    <div className="mb-6">
-                      <SearchButton
-                        onClick={() => {
-                          setMobileMenuOpen(false)
-                          setCommandPaletteOpen(true)
-                        }}
-                      />
                     </div>
 
                     {/* Mobile Links */}
@@ -167,7 +128,7 @@ export function TopNav() {
                     </nav>
                   </div>
 
-                  {/* Mobile Footer with User info */}
+                  {/* Mobile Footer */}
                   <div className="border-t border-border pt-4 flex items-center justify-between">
                     <UserMenu />
                     <span className="text-2xs text-muted-foreground font-mono">Argus v1.0</span>
@@ -178,9 +139,6 @@ export function TopNav() {
           </div>
         </div>
       </div>
-
-      {/* Command Palette */}
-      <CommandPalette open={commandPaletteOpen} setOpen={setCommandPaletteOpen} />
     </header>
   )
 }

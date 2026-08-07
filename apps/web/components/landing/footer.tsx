@@ -1,109 +1,62 @@
+"use client";
+
 import Link from "next/link";
-import { EyeMascot } from "@/components/landing/eye-mascot";
-import Image from "next/image";
-
 import { githubAuthUrl } from "@/lib/config";
-
-const footerLinks = [
-  {
-    heading: "Product",
-    links: [
-      { name: "Features", href: "#features" },
-      { name: "How it works", href: "#how-it-works" },
-      { name: "Get Started", href: githubAuthUrl },
-    ],
-  },
-  {
-    heading: "Resources",
-    links: [
-      { name: "GitHub", href: "https://github.com/Tarun-saxena/Argus" },
-      { name: "Contact", href: "https://x.com/Tarun__Saxena" },
-    ],
-  },
-];
 
 export function Footer() {
   return (
-    <footer className="border-t border-[#e4e4e7] bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid gap-12 md:grid-cols-[1.5fr_1fr_1fr]">
-          {/* Brand */}
-          <div>
-            <div className="mb-4 flex items-center gap-3">
-
-              <Image
-                src="/logo.png"
-                alt="Argus Logo"
-                width={32}
-                height={32}
-                className="rounded-sm object-contain"
-                priority
-              />
-
-              <span className="text-lg font-semibold text-[#09090b]">
-                Argus
-              </span>
+    <footer className="border-t border-border bg-background text-foreground pt-24 pb-32 relative overflow-hidden">
+      <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
+        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-5 pb-16">
+          {/* Brand Column */}
+          <div className="lg:col-span-3 space-y-4">
+            <Link href="/" className="flex items-center gap-2 select-none">
+              <span className="text-lg font-bold tracking-tight text-foreground">Argus</span>
+            </Link>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm font-medium">
+                Watching GitHub so you don't have to.
+              </p>
+              <p className="text-xs text-muted-foreground/60 font-mono">
+                Handcrafted for open source contributors.
+              </p>
             </div>
-
-            <p className="max-w-sm text-sm leading-7 text-[#71717a]">
-              Discover open-source issues that match your skills with AI-powered
-              recommendations.
-            </p>
           </div>
 
-          {footerLinks.map((section) => (
-            <div key={section.heading}>
-              <h3 className="mb-4 text-sm font-semibold text-[#09090b]">
-                {section.heading}
-              </h3>
+          {/* Product Column */}
+          <div>
+            <h4 className="text-sm font-semibold text-foreground mb-4">Product</h4>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li><Link href="#problem" className="hover:text-foreground transition-colors">Discovery</Link></li>
+              <li><Link href="#how-it-works" className="hover:text-foreground transition-colors">AI Analysis</Link></li>
+              <li><Link href="#features" className="hover:text-foreground transition-colors">Capabilities</Link></li>
+              <li><Link href={githubAuthUrl} className="hover:text-foreground transition-colors font-medium text-foreground">Continue with GitHub</Link></li>
+            </ul>
+          </div>
 
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.name}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-[#71717a] transition-colors hover:text-[#09090b]"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Resources Column */}
+          <div>
+            <h4 className="text-sm font-semibold text-foreground mb-4">Resources</h4>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li><a href="https://github.com/Tarun-saxena/Argus" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub Repository</a></li>
+              <li><a href="https://x.com/Tarun__Saxena" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Contact (X)</a></li>
+            </ul>
+          </div>
         </div>
 
-        {/* Bottom */}
-        <div className="mt-12 border-t border-[#e4e4e7] pt-8">
-          <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-
-            {/* Left */}
-            <div className="flex items-center gap-5">
-
-              <EyeMascot />
-
-              <div>
-                <p className="text-sm text-[#71717a]">
-                  © 2026 Argus. Built for developers.
-                </p>
-
-                <p className="mt-1 text-sm text-[#09090b]"><b>
-                  Watching GitHub so you don't have to.</b>
-                </p>
-              </div>
-
-            </div>
-
-            {/* Right */}
-            <div className="flex items-center gap-6 text-sm text-[#71717a]">
-              <span className="cursor-default hover:text-[#09090b] transition-colors">Terms</span>
-              <span className="cursor-default hover:text-[#09090b] transition-colors">Privacy</span>
-            </div>
-
-          </div>
+        {/* Bottom Bar */}
+        <div className="pt-8 text-xs text-muted-foreground font-mono">
+          <p>© {new Date().getFullYear()} Argus. All rights reserved.</p>
         </div>
       </div>
 
+      {/* Giant Cropped Branding Text at bottom right */}
+      <div
+        className="absolute bottom-[-3.5rem] sm:bottom-[-5rem] md:bottom-[-6.5rem] lg:bottom-[-8rem] right-4 sm:right-8 md:right-12 text-right select-none pointer-events-none tracking-tighter font-extrabold leading-none text-foreground/[0.07] dark:text-foreground/[0.03]"
+        style={{ fontSize: "clamp(12rem, 26vw, 32rem)" }}
+      >
+        Argus
+      </div>
     </footer>
   );
 }

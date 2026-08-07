@@ -2,126 +2,87 @@
 
 import { motion } from "framer-motion";
 
-const features = [
+const SYSTEM_CAPABILITIES = [
   {
-    title: "AI Difficulty",
-    tag: "AI",
-    body: "Know how hard an issue is before opening GitHub.",
-    icon: "✦",
-    gradient: "from-indigo-500 to-violet-500",
+    num: "01",
+    title: "Continuous GitHub Background Polling",
+    desc: "Background workers query GitHub APIs every few minutes to pull newly opened, unassigned issues before they get buried.",
   },
   {
-    title: "Match Score",
-    tag: "Match",
-    body: "Every issue gets a personalized compatibility score.",
-    icon: "◎",
-    gradient: "from-emerald-500 to-lime-500",
+    num: "02",
+    title: "Custom Repository Tracking",
+    desc: "Add any public GitHub repository to your personal watchlist to monitor issue feeds across your favorite open source ecosystems.",
   },
   {
-    title: "Live Polling",
-    tag: "Live",
-    body: "Fresh issues appear within minutes of being opened.",
-    icon: "⟳",
-    gradient: "from-amber-500 to-orange-500",
+    num: "03",
+    title: "Deterministic Match Score Ranking",
+    desc: "Recommendations are ranked deterministically by match percentage, creation time, and issue ID tiebreakers so your feed stays stable.",
   },
   {
-    title: "Smart Filters",
-    tag: "Filter",
-    body: "Search by language, framework and difficulty.",
-    icon: "⊟",
-    gradient: "from-pink-500 to-rose-500",
-  },
-  {
-    title: "AI Summary",
-    tag: "Explain",
-    body: "Understand every issue in seconds.",
-    icon: "≡",
-    gradient: "from-cyan-500 to-sky-500",
-  },
-  {
-    title: "Track Repos",
-    tag: "GitHub",
-    body: "Monitor any public repository automatically.",
-    icon: "⊕",
-    gradient: "from-violet-500 to-fuchsia-500",
+    num: "04",
+    title: "Untriaged Feed vs Explore Catalog",
+    desc: "Triage incoming issues directly into Bookmarked or Claimed states, while keeping an unassigned flat search catalog in Explore.",
   },
 ];
 
 export function Features() {
   return (
-    <section
-      id="features"
-      className="relative overflow-hidden border-t border-[#e4e4e7] bg-white py-20"
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#f7f7f7,transparent_60%)]" />
-
-      <div className="relative mx-auto max-w-6xl px-6">
-
+    <section id="features" className="relative border-t border-border/60 bg-muted/20 py-28 overflow-hidden">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 25 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: .5 }}
-          className="mb-14"
-        >
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-[#a1a1aa]">
-            FEATURES
-          </p>
-
-          <h2 className="max-w-2xl text-4xl font-bold leading-tight text-[#09090b]">
-            Everything you need to
-            <span className="text-[#a1a1aa]">
-              {" "}
-              contribute faster.
+        <div className="grid gap-12 lg:grid-cols-12 lg:items-end pb-16 border-b border-border/40">
+          <div className="lg:col-span-7">
+            <span className="text-xs font-mono font-semibold uppercase tracking-widest text-primary">
+              04 / REPOSITORY RADAR & CAPABILITIES
             </span>
-          </h2>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.1]">
+              Architected for speed, <br className="hidden sm:inline" />
+              <span className="text-muted-foreground font-normal">clarity, and control.</span>
+            </h2>
+          </div>
+          <div className="lg:col-span-5 lg:pl-8">
+            <p className="text-base text-muted-foreground leading-relaxed">
+              Argus provides a complete workflow for open source contributors—from initial repository tracking to one-click issue triage.
+            </p>
+          </div>
+        </div>
 
-          <p className="mt-5 max-w-lg text-[#71717a] leading-7">
-            AI-powered issue discovery designed for open source developers.
-          </p>
-        </motion.div>
-
-        <div className="grid gap-5 md:grid-cols-3">
-          {features.map((feature, index) => (
+        {/* Minimal Editorial Capabilities List */}
+        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {SYSTEM_CAPABILITIES.map((item, idx) => (
             <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 30 }}
+              key={item.num}
+              initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{
-                duration: .4,
-                delay: index * .08,
-              }}
-              whileHover={{
-                y: -6,
-              }}
-              className="group rounded-[26px] border border-[#e4e4e7] bg-white p-6 transition-all duration-300 hover:border-[#d4d4d8] hover:shadow-md"
+              transition={{ delay: idx * 0.1 }}
+              className="p-8 rounded-2xl border border-white/10 bg-zinc-950 flex flex-col justify-between relative overflow-hidden group shadow-lg min-h-[240px] hover:border-white/20 transition-all duration-500"
             >
-              <div className="mb-5 flex items-center justify-between">
-
-                <span className="rounded-full border border-[#e4e4e7] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-[#71717a]">
-                  {feature.tag}
-                </span>
-
-                <motion.div
-                  whileHover={{
-                    rotate: 10,
-                    scale: 1.08,
+              {/* Noisy Gradient Background Container */}
+              <div className="absolute inset-0 z-0 overflow-hidden rounded-2xl pointer-events-none">
+                <div
+                  className="absolute -inset-[20%] bg-cover opacity-85 group-hover:scale-105 transition-transform duration-[6000ms] ease-out select-none pointer-events-none"
+                  style={{
+                    backgroundImage: idx % 2 === 0 ? "url('/landing/noise-purple.jpg')" : "url('/landing/noise-gray.jpg')",
+                    backgroundPosition: 
+                      idx === 0 ? "0% 0%" :
+                      idx === 1 ? "100% 100%" :
+                      idx === 2 ? "20% 80%" :
+                      "80% 20%"
                   }}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} text-lg font-bold text-white`}
-                >
-                  {feature.icon}
-                </motion.div>
+                />
+                {/* Contrast overlay */}
+                <div className={`absolute inset-0 ${idx % 2 === 0 ? 'bg-gradient-to-b from-black/45 via-purple-950/10 to-black/60' : 'bg-gradient-to-b from-black/45 via-zinc-950/10 to-black/60'}`} />
               </div>
 
-              <h3 className="text-xl font-semibold text-[#09090b]">
-                {feature.title}
-              </h3>
-
-              <p className="mt-3 text-sm leading-6 text-[#71717a]">
-                {feature.body}
-              </p>
+              {/* Text Content */}
+              <div className="relative z-10 flex flex-col justify-between h-full">
+                <span className={`text-xs font-mono font-bold tracking-widest ${idx % 2 === 0 ? 'text-purple-300' : 'text-zinc-400'}`}>{item.num}</span>
+                <div className="mt-6">
+                  <h3 className="text-lg font-bold text-white tracking-tight leading-snug">{item.title}</h3>
+                  <p className={`mt-2 text-xs leading-relaxed font-medium ${idx % 2 === 0 ? 'text-purple-100/75' : 'text-zinc-300/75'}`}>{item.desc}</p>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>

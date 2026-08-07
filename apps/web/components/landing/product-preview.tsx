@@ -1,137 +1,302 @@
-export function ProductPreview() {
-  const mockIssues = [
-    {
-      repo: "vercel/next.js",
-      lang: "TypeScript",
-      stars: "124k",
-      title: "Add `useSearchParams` fallback for static rendering without Suspense",
-      difficulty: "INTERMEDIATE",
-      diffColor: "bg-yellow-100 text-yellow-800",
-      score: 91,
-      summary: "Improve the error message shown when useSearchParams is used outside a Suspense boundary in static rendering mode.",
-      skills: ["TypeScript", "React", "Next.js"],
-      time: "3–5 hours",
-    },
-    {
-      repo: "prisma/prisma",
-      lang: "TypeScript",
-      stars: "39k",
-      title: "Support `findMany` cursor pagination with composite unique fields",
-      difficulty: "ADVANCED",
-      diffColor: "bg-red-100 text-red-800",
-      score: 78,
-      summary: "Extend the cursor-based pagination API to support composite unique fields as cursor values, not just single-field primaries.",
-      skills: ["TypeScript", "PostgreSQL", "Prisma"],
-      time: "6–10 hours",
-    },
-    {
-      repo: "shadcn-ui/ui",
-      lang: "TypeScript",
-      stars: "78k",
-      title: "Add keyboard shortcut support to Command component",
-      difficulty: "BEGINNER",
-      diffColor: "bg-green-100 text-green-800",
-      score: 85,
-      summary: "Add a keyboard shortcut display slot to the Command menu items, similar to how macOS app menus show shortcuts.",
-      skills: ["React", "TypeScript", "CSS"],
-      time: "1–2 hours",
-    },
-  ];
+"use client";
 
+import { useState } from "react";
+import { ArrowUpRightIcon, SparklesIcon, GlobeIcon, LockIcon } from "lucide-react";
+
+// Premium mock data of GitHub issues matching user requests
+const LIVE_ISSUES = [
+  {
+    title: "[feat]: Track updating the undici CLI dependency past the 7.x line (current...",
+    repo: "shadcn-ui/ui",
+    difficulty: "Beginner",
+    diffClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    tracked: true,
+    age: "3h ago",
+    score: 64,
+    tags: ["TypeScript", "npm", "package management"]
+  },
+  {
+    title: "[bug](cli): findCommonRoot in get-config.ts causes EPERM scanning parent directories on Windows due to un-normalized slashes",
+    repo: "shadcn-ui/ui",
+    difficulty: "Beginner",
+    diffClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    tracked: true,
+    age: "5h ago",
+    score: 64,
+    tags: ["TypeScript", "Node.js path module", "Windows file system awareness"]
+  },
+  {
+    title: "Inconsistent src/App.jsx example for react-user-management",
+    repo: "supabase/supabase",
+    difficulty: "Beginner",
+    diffClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    tracked: true,
+    age: "10h ago",
+    score: 82,
+    tags: ["Markdown", "React", "TypeScript"]
+  },
+  {
+    title: "Update Flask Framework SUPABASE_KEY to SUPABASE_PUBLISHABLE_KEY",
+    repo: "supabase/supabase",
+    difficulty: "Beginner",
+    diffClass: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    tracked: true,
+    age: "12h ago",
+    score: 45,
+    tags: ["Technical Writing", "Documentation"]
+  },
+  {
+    title: "[Compiler Bug]: React Compiler changes quoted computed property access to dot notation",
+    repo: "react/react",
+    difficulty: "Advanced",
+    diffClass: "text-red-400 bg-red-500/10 border-red-500/20",
+    tracked: false,
+    age: "14h ago",
+    score: 93,
+    tags: ["Compiler", "React Core", "Babel"]
+  },
+  {
+    title: "ERROR: 42883: function supabase_functions.http_request() does not exist",
+    repo: "supabase/supabase",
+    difficulty: "Intermediate",
+    diffClass: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    tracked: true,
+    age: "1d ago",
+    score: 71,
+    tags: ["PostgreSQL", "Database Administration", "Identity Management"]
+  }
+];
+
+export function ProductPreview() {
   return (
-    <section className="py-24 bg-[#fafafa] border-t border-[#e4e4e7]">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#a1a1aa] mb-4">
-            Product preview
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#09090b] mb-4">
-            Your personalised feed, live.
-          </h2>
-          <p className="text-[#71717a] max-w-md mx-auto">
-            This is what Argus surfaces for a TypeScript developer with React and Node.js skills.
-          </p>
+    <section className="relative border-t border-border/60 bg-background py-28 overflow-hidden">
+      {/* Inline styles for vertical loop marquee and tracked text shimmer */}
+      <style>{`
+        @keyframes scroll-vertical-table {
+          0% {
+            transform: translateY(0);
+          }
+          100% {
+            transform: translateY(-50%);
+          }
+        }
+        .animate-scroll-table {
+          animation: scroll-vertical-table 22s linear infinite;
+        }
+        @keyframes text-shimmer {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+        .animate-shimmer-text {
+          background: linear-gradient(90deg, #818cf8, #c084fc, #818cf8);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: text-shimmer 3s linear infinite;
+        }
+      `}</style>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Header Section */}
+        <div className="grid gap-12 lg:grid-cols-12 lg:items-end pb-16 border-b border-border/40">
+          <div className="lg:col-span-7">
+            <span className="text-xs font-mono font-semibold uppercase tracking-widest text-primary">
+              03 / THE REALTIME WORKSPACE
+            </span>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.1]">
+              Live recommendations <br className="hidden sm:inline" />
+              <span className="text-muted-foreground font-normal">streaming in real time.</span>
+            </h2>
+          </div>
+          <div className="lg:col-span-5 lg:pl-8">
+            <p className="text-base text-muted-foreground leading-relaxed">
+              Experience the live matching engine. As background queues analyze repositories, they calculate match compatibility metrics against developer profiles and stream recommendations instantly.
+            </p>
+          </div>
         </div>
 
-        {/* Mock browser shell */}
-        <div className="rounded-2xl border border-[#e4e4e7] bg-white shadow-xl overflow-hidden">
-          {/* Browser chrome */}
-          <div className="border-b border-[#e4e4e7] bg-[#f4f4f5] px-4 py-3 flex items-center gap-3">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
-              <div className="w-3 h-3 rounded-full bg-[#f59e0b]" />
-              <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
+        {/* Polished Browser Window Container - Dark Glassmorphism Theme */}
+        <div className="mt-16 rounded-2xl border border-white/10 dark:border-white/5 bg-zinc-950/85 backdrop-blur-md shadow-2xl overflow-hidden relative group">
+          {/* Subtle Outer Glow & Purple Accent */}
+          <div className="absolute inset-0 -z-10 rounded-2xl bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl" />
+
+          {/* Browser Window Header Bar */}
+          <div className="border-b border-white/5 bg-zinc-900/90 px-6 py-4 flex items-center justify-between z-20 relative select-none">
+            {/* Window control dots */}
+            <div className="flex items-center gap-2">
+              <span className="size-3 rounded-full bg-red-500/80" />
+              <span className="size-3 rounded-full bg-amber-500/80" />
+              <span className="size-3 rounded-full bg-emerald-500/80" />
             </div>
-            <div className="flex-1 bg-white border border-[#e4e4e7] rounded-md px-3 py-1 text-xs text-[#71717a] max-w-xs mx-auto text-center">
-              argus/dashboard
+
+            {/* Browser Address Bar */}
+            <div className="hidden sm:flex items-center gap-2 px-6 py-1.5 rounded-lg bg-black/40 border border-white/5 text-xs font-mono text-zinc-400 w-96 justify-center">
+              <LockIcon className="size-3 text-emerald-500/90" />
+              <span>argus.dev/explore</span>
+            </div>
+
+            {/* Indicator status light */}
+            <div className="flex items-center gap-2">
+              <span className="relative flex size-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full size-2 bg-indigo-500"></span>
+              </span>
+              <span className="text-2xs font-mono text-zinc-400 uppercase tracking-wider">Queue Active</span>
             </div>
           </div>
 
-          {/* Dashboard content */}
-          <div className="p-6">
-            {/* Dashboard header */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-semibold text-[#09090b]">Your feed</h3>
-                <p className="text-xs text-[#71717a]">3 issues matched your profile</p>
-              </div>
-              {/* Difficulty filter pills */}
-              <div className="flex gap-2">
-                {["All", "Beginner", "Intermediate", "Advanced"].map((d, i) => (
-                  <span
-                    key={d}
-                    className={`text-xs px-3 py-1 rounded-full border ${i === 0
-                      ? "bg-[#64539c] text-white border-[#64539c]"
-                      : "border-[#e4e4e7] text-[#71717a] bg-white"
-                      }`}
-                  >
-                    {d}
-                  </span>
-                ))}
-              </div>
-            </div>
+          {/* Table Headers */}
+          <div className="relative z-20 grid grid-cols-12 gap-4 border-b border-white/5 bg-zinc-900/40 px-6 py-3.5 text-xs font-mono font-bold tracking-wider text-zinc-400 select-none">
+            <div className="col-span-6">TITLE</div>
+            <div className="col-span-2">REPOSITORY</div>
+            <div className="col-span-2">DIFFICULTY</div>
+            <div className="col-span-1">AGE</div>
+            <div className="col-span-1 text-right">MATCH</div>
+          </div>
 
-            {/* Issue cards */}
-            <div className="space-y-3">
-              {mockIssues.map((issue) => (
-                <div
-                  key={issue.title}
-                  className="border border-[#e4e4e7] rounded-xl p-4 bg-white hover:border-[#d4d4d8] transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-[#a1a1aa] mb-1">
-                        {issue.repo}
-                        <span className="ml-2 text-[#09090b] font-medium">{issue.lang}</span>
-                        <span className="ml-2">⭐ {issue.stars}</span>
-                      </p>
-                      <p className="font-medium text-sm text-[#09090b] leading-snug mb-2">
+          {/* Scrolling Content Viewport - Set to a smaller size (290px) */}
+          <div className="relative h-[290px] overflow-hidden z-10">
+            {/* Smooth Top & Bottom Fade Overlays */}
+            <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-zinc-950 to-transparent pointer-events-none z-20" />
+            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none z-20" />
+
+            <div className="h-full overflow-hidden relative">
+              {/* Marquee Vertical scroll list */}
+              <div className="animate-scroll-table hover:[animation-play-state:paused] cursor-pointer">
+                {/* Loop Set 1 */}
+                {LIVE_ISSUES.map((issue, idx) => (
+                  <div
+                    key={`${issue.title}-1-${idx}`}
+                    className={`grid grid-cols-12 gap-4 px-6 py-4.5 items-center border-b border-white/[0.03] transition-all duration-300 hover:bg-white/[0.04] hover:-translate-y-0.5 hover:shadow-lg ${
+                      idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.01]"
+                    }`}
+                  >
+                    {/* Title & Tags */}
+                    <div className="col-span-6 min-w-0 pr-4">
+                      <h4 className="text-sm font-semibold text-zinc-100 truncate transition-colors leading-snug">
                         {issue.title}
-                      </p>
-                      <p className="text-xs text-[#71717a] leading-relaxed mb-3">
-                        {issue.summary}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${issue.diffColor}`}>
-                          {issue.difficulty.charAt(0) + issue.difficulty.slice(1).toLowerCase()}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full border border-[#e4e4e7] text-[#71717a]">
-                          ⏱ {issue.time}
-                        </span>
-                        {issue.skills.map((s) => (
-                          <span key={s} className="text-xs px-2 py-0.5 rounded bg-[#f4f4f5] text-[#71717a]">
-                            {s}
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {issue.tags.map((t) => (
+                          <span key={t} className="text-3xs font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.05] text-zinc-400">
+                            {t}
                           </span>
                         ))}
                       </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-2xl font-bold text-[#09090b]">{issue.score}%</p>
-                      <p className="text-xs text-[#a1a1aa]">match</p>
+
+                    {/* Repository Name with status dot */}
+                    <div className="col-span-2 flex items-center gap-2">
+                      <span className="font-mono text-xs text-zinc-300 font-semibold truncate">
+                        {issue.repo}
+                      </span>
+                      {idx % 3 === 0 && (
+                        <span className="relative flex size-1.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full size-1.5 bg-emerald-500"></span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Difficulty Pillar */}
+                    <div className="col-span-2 flex items-center gap-2.5">
+                      <span className={`text-3xs font-mono font-bold px-2 py-0.5 rounded-full border ${issue.diffClass}`}>
+                        {issue.difficulty}
+                      </span>
+                      {issue.tracked && (
+                        <span className="text-3xs font-mono font-bold tracking-wide animate-shimmer-text">
+                          Tracked
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Age */}
+                    <div className="col-span-1 text-xs text-zinc-400 font-medium">
+                      {issue.age}
+                    </div>
+
+                    {/* Match Score */}
+                    <div className="col-span-1 text-right font-mono text-sm font-bold">
+                      <span className={`animate-pulse ${
+                        issue.score >= 80 ? "text-emerald-400" :
+                        issue.score >= 50 ? "text-amber-400" :
+                        "text-zinc-500"
+                      }`}>
+                        {issue.score}%
+                      </span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+
+                {/* Loop Set 2 (Duplicate to complete seamless loop) */}
+                {LIVE_ISSUES.map((issue, idx) => (
+                  <div
+                    key={`${issue.title}-2-${idx}`}
+                    className={`grid grid-cols-12 gap-4 px-6 py-4.5 items-center border-b border-white/[0.03] transition-all duration-300 hover:bg-white/[0.04] hover:-translate-y-0.5 hover:shadow-lg ${
+                      idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.01]"
+                    }`}
+                  >
+                    {/* Title & Tags */}
+                    <div className="col-span-6 min-w-0 pr-4">
+                      <h4 className="text-sm font-semibold text-zinc-100 truncate transition-colors leading-snug">
+                        {issue.title}
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {issue.tags.map((t) => (
+                          <span key={t} className="text-3xs font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.05] text-zinc-400">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Repository Name with status dot */}
+                    <div className="col-span-2 flex items-center gap-2">
+                      <span className="font-mono text-xs text-zinc-300 font-semibold truncate">
+                        {issue.repo}
+                      </span>
+                      {idx % 3 === 0 && (
+                        <span className="relative flex size-1.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full size-1.5 bg-emerald-500"></span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Difficulty Pillar */}
+                    <div className="col-span-2 flex items-center gap-2.5">
+                      <span className={`text-3xs font-mono font-bold px-2 py-0.5 rounded-full border ${issue.diffClass}`}>
+                        {issue.difficulty}
+                      </span>
+                      {issue.tracked && (
+                        <span className="text-3xs font-mono font-bold tracking-wide animate-shimmer-text">
+                          Tracked
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Age */}
+                    <div className="col-span-1 text-xs text-zinc-400 font-medium">
+                      {issue.age}
+                    </div>
+
+                    {/* Match Score */}
+                    <div className="col-span-1 text-right font-mono text-sm font-bold">
+                      <span className={`animate-pulse ${
+                        issue.score >= 80 ? "text-emerald-400" :
+                        issue.score >= 50 ? "text-amber-400" :
+                        "text-zinc-500"
+                      }`}>
+                        {issue.score}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
