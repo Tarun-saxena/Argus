@@ -51,6 +51,13 @@ router.get("/", authMiddleware, async (req, res) => {
                     ...(issueType && {
                         labels: { has: `type: ${issueType.toLowerCase()}` },
                     }),
+                    repo: {
+                        trackedBy: {
+                            some: {
+                                userId: req.userId as string,
+                            },
+                        },
+                    },
                 },
             },
             include: {

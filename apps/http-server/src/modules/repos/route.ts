@@ -11,15 +11,10 @@ const createRepoSchema = z.object({
 
 const router = Router();
 
+// POST /repos — track a repo for the current user
 router.post("/", authMiddleware, async (req, res) => {
-
-  const { fullName } = createRepoSchema.parse(req.body);
-
-  if (!fullName || !fullName.includes("/")) {
-    return res.status(400).json({ error: "fullName must be 'owner/repo'" });
-  }
-
   try {
+    const { fullName } = createRepoSchema.parse(req.body);
 
     const ghRes = await axios.get(`https://api.github.com/repos/${fullName}`);
     const gh = ghRes.data;
@@ -41,10 +36,20 @@ router.post("/", authMiddleware, async (req, res) => {
       },
     });
 
-    // one-time poll
-    await repoPollQueue.add("poll-repo", { repoId: repo.id }, { jobId: `${repo.id}-initial` });
+    // Check if user is already tracking this repository
+    const existingTracking = await prisma.trackedRepo.findUnique({
+      where: { userId_repoId: { userId: req.userId!, repoId: repo.id } },
+    });
+    if (existingTracking) {
+      return res.status(400).json({ error: "Repository is already tracked." });
+    }
 
-    // poll after  every 5 minutes
+    await prisma.trackedRepo.create({
+      data: { userId: req.userId!, repoId: repo.id },
+    });
+
+    // enqueue poll jobs
+    await repoPollQueue.add("poll-repo", { repoId: repo.id }, { jobId: `${repo.id}-initial` });
     await repoPollQueue.add(
       "poll-repo",
       { repoId: repo.id },
@@ -55,7 +60,6 @@ router.post("/", authMiddleware, async (req, res) => {
     );
 
     res.status(201).json(repo);
-
   } catch (err: any) {
     if (err.response?.status === 404) {
       return res.status(404).json({ error: "Repo not found on GitHub" });
@@ -65,9 +69,30 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-router.get("/", async (req, res) => {
-  const repos = await prisma.repo.findMany({ orderBy: { createdAt: "desc" } });
-  res.json(repos);
+// GET /repos — only repos tracked by the current user
+router.get("/", authMiddleware, async (req, res) => {
+  const tracked = await prisma.trackedRepo.findMany({
+    where: { userId: req.userId! },
+    include: { repo: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  res.json(tracked.map((t) => t.repo));
+});
+
+// DELETE /repos/:repoId — stop tracking a repo (doesn't delete the global Repo/Issue data)
+router.delete("/:repoId", authMiddleware, async (req, res) => {
+  const { repoId } = req.params;
+
+  try {
+    await prisma.trackedRepo.delete({
+      where: { userId_repoId: { userId: req.userId!, repoId: repoId as string } },
+    });
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(404).json({ error: "Repo not tracked by you" });
+  }
 });
 
 export default router;

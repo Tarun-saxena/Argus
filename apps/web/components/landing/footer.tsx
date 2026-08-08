@@ -4,6 +4,18 @@ import Link from "next/link";
 import { githubAuthUrl } from "@/lib/config";
 
 export function Footer() {
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("#")) {
+      e.preventDefault();
+      const id = href.slice(1);
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", href);
+      }
+    }
+  };
+
   return (
     <footer className="border-t border-border bg-background text-foreground pt-24 pb-32 relative overflow-hidden">
       <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
@@ -27,9 +39,9 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-foreground mb-4">Product</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><Link href="#problem" className="hover:text-foreground transition-colors">Discovery</Link></li>
-              <li><Link href="#how-it-works" className="hover:text-foreground transition-colors">AI Analysis</Link></li>
-              <li><Link href="#features" className="hover:text-foreground transition-colors">Capabilities</Link></li>
+              <li><Link href="#problem" onClick={(e) => handleNavClick(e, "#problem")} className="hover:text-foreground transition-colors">Discovery</Link></li>
+              <li><Link href="#how-it-works" onClick={(e) => handleNavClick(e, "#how-it-works")} className="hover:text-foreground transition-colors">AI Analysis</Link></li>
+              <li><Link href="#features" onClick={(e) => handleNavClick(e, "#features")} className="hover:text-foreground transition-colors">Capabilities</Link></li>
               <li><Link href={githubAuthUrl} className="hover:text-foreground transition-colors font-medium text-foreground">Continue with GitHub</Link></li>
             </ul>
           </div>
@@ -52,8 +64,8 @@ export function Footer() {
 
       {/* Giant Cropped Branding Text at bottom right */}
       <div
-        className="absolute bottom-[-3.5rem] sm:bottom-[-5rem] md:bottom-[-6.5rem] lg:bottom-[-8rem] right-4 sm:right-8 md:right-12 text-right select-none pointer-events-none tracking-tighter font-extrabold leading-none text-foreground/[0.07] dark:text-foreground/[0.03]"
-        style={{ fontSize: "clamp(12rem, 26vw, 32rem)" }}
+        className="absolute bottom-[-1.5rem] sm:bottom-[-3rem] md:bottom-[-5rem] lg:bottom-[-8rem] right-4 sm:right-8 md:right-12 text-right select-none pointer-events-none tracking-tighter font-extrabold leading-none text-foreground/[0.07] dark:text-foreground/[0.03]"
+        style={{ fontSize: "clamp(5rem, 24vw, 32rem)" }}
       >
         Argus
       </div>

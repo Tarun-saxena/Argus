@@ -130,9 +130,19 @@ export default function RepositoriesPage() {
     const trimmed = name.trim();
     if (!trimmed || submitting) return;
 
-    const isAlreadyTracked = repos.some(
-      (r) => r.fullName.toLowerCase() === trimmed.toLowerCase()
-    );
+    let normalized = trimmed.toLowerCase();
+    if (normalized.endsWith("/")) {
+      normalized = normalized.slice(0, -1);
+    }
+
+    const isAlreadyTracked = repos.some((r) => {
+      let rName = r.fullName.toLowerCase();
+      if (rName.endsWith("/")) {
+        rName = rName.slice(0, -1);
+      }
+      return rName === normalized;
+    });
+
     if (isAlreadyTracked) {
       setError("This repository is already added.");
       return;
@@ -143,7 +153,10 @@ export default function RepositoriesPage() {
     try {
       const newRepo = await api.addRepo(trimmed);
       setFullName("");
-      setRepos((prev) => [newRepo, ...prev]);
+      setRepos((prev) => {
+        if (prev.some((r) => r.id === newRepo.id)) return prev;
+        return [newRepo, ...prev];
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add repository.");
     } finally {
@@ -260,15 +273,34 @@ export default function RepositoriesPage() {
                         {repo.fullName}
                       </h2>
                     </div>
-                    <a
-                      href={`https://github.com/${repo.fullName}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"
-                      aria-label={`Open ${repo.fullName} on GitHub`}
-                    >
-                      <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-                    </a>
+                    <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-all">
+                      <a
+                        href={`https://github.com/${repo.fullName}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`Open ${repo.fullName} on GitHub`}
+                      >
+                        <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
+                      </a>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api.removeRepo(repo.id);
+                            setRepos((prev) => prev.filter((r) => r.id !== repo.id));
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="text-muted-foreground hover:text-destructive cursor-pointer"
+                        aria-label="Stop tracking this repo"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">

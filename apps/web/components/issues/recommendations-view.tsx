@@ -446,6 +446,7 @@ export function RecommendationsView() {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [hasRepos, setHasRepos] = React.useState(false);
+  const [isSyncing, setIsSyncing] = React.useState(false);
 
   const activeIndexRef = React.useRef(activeIndex);
   React.useEffect(() => {
@@ -475,6 +476,7 @@ export function RecommendationsView() {
       const newItems = recsResponse.recommendations as LocalRec[];
       console.log(`[Frontend] recommendations received: ${newItems.length}`);
       setHasRepos(reposResponse.length > 0);
+      setIsSyncing(reposResponse.some((r) => !r.lastPolledAt));
       
       setItems((prevItems) => {
         // Map pending state from prevItems if user triaged an item recently
@@ -508,6 +510,7 @@ export function RecommendationsView() {
       }
       setError(caught instanceof Error ? caught.message : "Could not load recommendations.");
     } finally {
+      inFlightRef.current = false;
       if (!opts?.signal || !opts.signal.aborted) {
         setLoading(false);
         setIsRefreshing(false);
@@ -622,13 +625,24 @@ export function RecommendationsView() {
 
   if (items.length === 0) {
     if (hasRepos) {
-      return (
-        <EmptyState
-          icon={<Loader2Icon className="size-10 animate-spin text-primary" />}
-          title="Syncing repositories..."
-          description="Argus is currently fetching open issues and analyzing them with AI. This will take a moment."
-        />
-      );
+      if (isSyncing) {
+        return (
+          <EmptyState
+            icon={<Loader2Icon className="size-10 animate-spin text-primary" />}
+            title="Syncing repositories..."
+            description="Argus is currently fetching open issues and analyzing them with AI. This will take a moment."
+          />
+        );
+      } else {
+        return (
+          <EmptyState
+            icon={<SparklesIcon className="size-10" />}
+            title="No matching recommendations"
+            description="We finished syncing your repositories, but none of the open issues match your skills or preferred languages. Try adjusting your preferences in Settings."
+            action={{ label: "Go to Settings", href: "/settings" }}
+          />
+        );
+      }
     }
 
     return (
@@ -701,7 +715,7 @@ export function RecommendationsView() {
               type="button"
               onClick={() => void load({ isSilent: true })}
               disabled={isRefreshing}
-              className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors inline-flex items-center gap-1"
+              className="text-xs font-semibold text-foreground/80 hover:text-foreground transition-colors inline-flex items-center gap-1 cursor-pointer"
               aria-label="Refresh recommendations"
             >
               {isRefreshing && <Loader2Icon className="size-3 animate-spin text-primary" aria-hidden="true" />}

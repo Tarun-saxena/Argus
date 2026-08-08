@@ -38,6 +38,7 @@ router.patch("/me", authMiddleware, async (req, res) => {
                 interests: true,
                 createdAt: true,
                 lastMatchedAt: true,
+                _count: { select: { trackedRepos: true, recommendations: true } },
             },
             data: {
                 ...(skills !== undefined && { skills }),
@@ -62,19 +63,32 @@ router.patch("/me", authMiddleware, async (req, res) => {
         return res.json({
             ...user,
             avatarUrl: `https://github.com/${user.username}.png`,
+            trackedRepoCount: user._count.trackedRepos,
+            recommendationCount: user._count.recommendations,
         });
 
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: "Failed to update profile" });
     }
-})
+});
 
 router.get("/me", authMiddleware, async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.userId as string },
-            select: { id: true, username: true, email: true, skills: true, preferredLanguages: true, interests: true, createdAt: true, updatedAt: true, lastMatchedAt: true }
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                skills: true,
+                preferredLanguages: true,
+                interests: true,
+                createdAt: true,
+                updatedAt: true,
+                lastMatchedAt: true,
+                _count: { select: { trackedRepos: true, recommendations: true } },
+            }
         });
 
         if (!user) {
@@ -84,6 +98,8 @@ router.get("/me", authMiddleware, async (req, res) => {
         return res.json({
             ...user,
             avatarUrl: `https://github.com/${user.username}.png`,
+            trackedRepoCount: user._count.trackedRepos,
+            recommendationCount: user._count.recommendations,
         });
     } catch (error) {
         console.error(error);

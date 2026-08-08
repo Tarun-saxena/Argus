@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
 import { SelectablePill } from "@/components/shared/selectable-pill";
 import { recommendationState } from "@/lib/recommendation-state";
+import { useAuth } from "@/lib/auth-context";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -104,6 +105,7 @@ function Section({
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { refetchUser } = useAuth();
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
@@ -135,13 +137,13 @@ export default function SettingsPage() {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     try {
-      const [repos, recs, bookmarks] = await Promise.all([
-        api.getRepos(),
+      const [user, recs, bookmarks] = await Promise.all([
+        api.getMe(),
         api.getRecommendations(),
         api.getRecommendations({ state: "BOOKMARKED" }),
       ]);
       setStats({
-        repos: repos.length,
+        repos: user.trackedRepoCount ?? 0,
         recommendations: recs.count,
         bookmarks: bookmarks.count,
       });
@@ -201,6 +203,7 @@ export default function SettingsPage() {
     try {
       const updated = await api.updateMe({ skills, preferredLanguages: languages, interests });
       setProfile(updated);
+      await refetchUser();
     } catch (err) {
       console.error("Save failed:", err);
       toast.error("Failed to save changes. Please try again.");

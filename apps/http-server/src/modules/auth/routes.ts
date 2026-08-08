@@ -43,7 +43,12 @@ router.get("/github/callback", async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    const isOnboarded = user.skills.length > 0 || user.preferredLanguages.length > 0;
+
+
+    res.redirect(
+      `${process.env.FRONTEND_URL}${isOnboarded ? "/dashboard" : "/onboarding"}`
+    );
   } catch (err) {
     console.error(err);
     res.status(500).send("OAuth failed");

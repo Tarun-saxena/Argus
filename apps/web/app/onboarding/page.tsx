@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { recommendationState } from "@/lib/recommendation-state";
 import { CheckIcon, SparklesIcon, GitForkIcon, ArrowRightIcon, Loader2Icon } from "lucide-react";
 import { SelectablePill } from "@/components/shared/selectable-pill";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
 const SKILLS = [
@@ -59,6 +60,7 @@ const STEPS = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { refetchUser } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const [skills, setSkills] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
@@ -81,6 +83,7 @@ export default function OnboardingPage() {
     try {
       await api.updateMe({ skills, preferredLanguages: languages });
       await Promise.allSettled(selectedRepos.map((r) => api.addRepo(r)));
+      await refetchUser();
       recommendationState.startRematchTracking(saveTime);
       router.push("/dashboard");
     } catch (err) {

@@ -67,6 +67,88 @@ const LIVE_ISSUES = [
   }
 ];
 
+interface MockIssueRowProps {
+  issue: typeof LIVE_ISSUES[number];
+  idx: number;
+  suffix: string;
+}
+
+function MockIssueRow({ issue, idx, suffix }: MockIssueRowProps) {
+  return (
+    <div
+      key={`${issue.title}-${suffix}-${idx}`}
+      className={`flex flex-col sm:grid sm:grid-cols-12 gap-2.5 sm:gap-4 px-6 py-3.5 items-stretch sm:items-center border-b border-white/[0.03] transition-all duration-300 hover:bg-white/[0.04] hover:-translate-y-0.5 hover:shadow-lg ${
+        idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.01]"
+      }`}
+    >
+      {/* Mobile Top Row / Desktop Column 6 */}
+      <div className="flex sm:contents items-center justify-between gap-4">
+        {/* Title (left on mobile, col-span-6 on desktop) */}
+        <div className="flex-1 sm:col-span-6 min-w-0 sm:pr-4">
+          <h4 className="text-sm font-semibold text-zinc-100 truncate transition-colors leading-snug">
+            {issue.title}
+          </h4>
+          {/* Tags (Desktop only) */}
+          <div className="hidden sm:flex flex-wrap gap-1.5 mt-2">
+            {issue.tags.map((t) => (
+              <span key={t} className="text-3xs font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.05] text-zinc-400">
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+        
+        {/* Match Score (right on mobile, col-span-1 on desktop) */}
+        <div className="sm:hidden font-mono text-sm font-bold shrink-0 text-right">
+          <span className={issue.score >= 80 ? "text-emerald-400" : issue.score >= 50 ? "text-amber-400" : "text-zinc-500"}>
+            {issue.score}%
+          </span>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Row (Meta) / Desktop Columns */}
+      <div className="flex sm:contents items-center justify-between sm:justify-start gap-3 mt-1 sm:mt-0 text-2xs sm:text-xs text-zinc-400">
+        {/* Repository (col-span-2 on desktop) */}
+        <div className="sm:col-span-2 flex items-center gap-2 min-w-0">
+          <span className="font-mono text-2xs sm:text-xs text-zinc-300 font-semibold truncate">
+            {issue.repo}
+          </span>
+          {idx % 3 === 0 && (
+            <span className="relative flex size-1.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 opacity-75"></span>
+              <span className="relative inline-flex rounded-full size-1.5 bg-emerald-500"></span>
+            </span>
+          )}
+        </div>
+
+        {/* Difficulty (col-span-2 on desktop) */}
+        <div className="sm:col-span-2 flex items-center gap-2.5">
+          <span className={`text-3xs font-mono font-bold px-2 py-0.5 rounded-full border ${issue.diffClass}`}>
+            {issue.difficulty}
+          </span>
+          {issue.tracked && (
+            <span className="text-3xs font-mono font-bold tracking-wide animate-shimmer-text">
+              Tracked
+            </span>
+          )}
+        </div>
+
+        {/* Age (col-span-1 on desktop) */}
+        <div className="sm:col-span-1 text-xs text-zinc-400 font-medium font-mono">
+          {issue.age}
+        </div>
+
+        {/* Match Score (Desktop only) */}
+        <div className="hidden sm:block sm:col-span-1 text-right font-mono text-sm font-bold">
+          <span className={issue.score >= 80 ? "text-emerald-400" : issue.score >= 50 ? "text-amber-400" : "text-zinc-500"}>
+            {issue.score}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ProductPreview() {
   return (
     <section className="relative border-t border-border/60 bg-background py-28 overflow-hidden">
@@ -150,7 +232,7 @@ export function ProductPreview() {
           </div>
 
           {/* Table Headers */}
-          <div className="relative z-20 grid grid-cols-12 gap-4 border-b border-white/5 bg-zinc-900/40 px-6 py-3.5 text-xs font-mono font-bold tracking-wider text-zinc-400 select-none">
+          <div className="hidden sm:grid relative z-20 grid-cols-12 gap-4 border-b border-white/5 bg-zinc-900/40 px-6 py-3.5 text-xs font-mono font-bold tracking-wider text-zinc-400 select-none">
             <div className="col-span-6">TITLE</div>
             <div className="col-span-2">REPOSITORY</div>
             <div className="col-span-2">DIFFICULTY</div>
@@ -169,132 +251,12 @@ export function ProductPreview() {
               <div className="animate-scroll-table hover:[animation-play-state:paused] cursor-pointer">
                 {/* Loop Set 1 */}
                 {LIVE_ISSUES.map((issue, idx) => (
-                  <div
-                    key={`${issue.title}-1-${idx}`}
-                    className={`grid grid-cols-12 gap-4 px-6 py-4.5 items-center border-b border-white/[0.03] transition-all duration-300 hover:bg-white/[0.04] hover:-translate-y-0.5 hover:shadow-lg ${
-                      idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.01]"
-                    }`}
-                  >
-                    {/* Title & Tags */}
-                    <div className="col-span-6 min-w-0 pr-4">
-                      <h4 className="text-sm font-semibold text-zinc-100 truncate transition-colors leading-snug">
-                        {issue.title}
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {issue.tags.map((t) => (
-                          <span key={t} className="text-3xs font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.05] text-zinc-400">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Repository Name with status dot */}
-                    <div className="col-span-2 flex items-center gap-2">
-                      <span className="font-mono text-xs text-zinc-300 font-semibold truncate">
-                        {issue.repo}
-                      </span>
-                      {idx % 3 === 0 && (
-                        <span className="relative flex size-1.5 shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full size-1.5 bg-emerald-500"></span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Difficulty Pillar */}
-                    <div className="col-span-2 flex items-center gap-2.5">
-                      <span className={`text-3xs font-mono font-bold px-2 py-0.5 rounded-full border ${issue.diffClass}`}>
-                        {issue.difficulty}
-                      </span>
-                      {issue.tracked && (
-                        <span className="text-3xs font-mono font-bold tracking-wide animate-shimmer-text">
-                          Tracked
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Age */}
-                    <div className="col-span-1 text-xs text-zinc-400 font-medium">
-                      {issue.age}
-                    </div>
-
-                    {/* Match Score */}
-                    <div className="col-span-1 text-right font-mono text-sm font-bold">
-                      <span className={`animate-pulse ${
-                        issue.score >= 80 ? "text-emerald-400" :
-                        issue.score >= 50 ? "text-amber-400" :
-                        "text-zinc-500"
-                      }`}>
-                        {issue.score}%
-                      </span>
-                    </div>
-                  </div>
+                  <MockIssueRow key={`${issue.title}-1-${idx}`} issue={issue} idx={idx} suffix="1" />
                 ))}
 
                 {/* Loop Set 2 (Duplicate to complete seamless loop) */}
                 {LIVE_ISSUES.map((issue, idx) => (
-                  <div
-                    key={`${issue.title}-2-${idx}`}
-                    className={`grid grid-cols-12 gap-4 px-6 py-4.5 items-center border-b border-white/[0.03] transition-all duration-300 hover:bg-white/[0.04] hover:-translate-y-0.5 hover:shadow-lg ${
-                      idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.01]"
-                    }`}
-                  >
-                    {/* Title & Tags */}
-                    <div className="col-span-6 min-w-0 pr-4">
-                      <h4 className="text-sm font-semibold text-zinc-100 truncate transition-colors leading-snug">
-                        {issue.title}
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {issue.tags.map((t) => (
-                          <span key={t} className="text-3xs font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.05] text-zinc-400">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Repository Name with status dot */}
-                    <div className="col-span-2 flex items-center gap-2">
-                      <span className="font-mono text-xs text-zinc-300 font-semibold truncate">
-                        {issue.repo}
-                      </span>
-                      {idx % 3 === 0 && (
-                        <span className="relative flex size-1.5 shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full size-1.5 bg-emerald-500"></span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Difficulty Pillar */}
-                    <div className="col-span-2 flex items-center gap-2.5">
-                      <span className={`text-3xs font-mono font-bold px-2 py-0.5 rounded-full border ${issue.diffClass}`}>
-                        {issue.difficulty}
-                      </span>
-                      {issue.tracked && (
-                        <span className="text-3xs font-mono font-bold tracking-wide animate-shimmer-text">
-                          Tracked
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Age */}
-                    <div className="col-span-1 text-xs text-zinc-400 font-medium">
-                      {issue.age}
-                    </div>
-
-                    {/* Match Score */}
-                    <div className="col-span-1 text-right font-mono text-sm font-bold">
-                      <span className={`animate-pulse ${
-                        issue.score >= 80 ? "text-emerald-400" :
-                        issue.score >= 50 ? "text-amber-400" :
-                        "text-zinc-500"
-                      }`}>
-                        {issue.score}%
-                      </span>
-                    </div>
-                  </div>
+                  <MockIssueRow key={`${issue.title}-2-${idx}`} issue={issue} idx={idx} suffix="2" />
                 ))}
               </div>
             </div>

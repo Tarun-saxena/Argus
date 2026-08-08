@@ -24,11 +24,25 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Request failed" }));
-    throw new ApiError(error.error ?? "Request failed", response.status);
+    const text = await response.text().catch(() => "");
+    let errorMsg = "Request failed";
+    try {
+      if (text) {
+        const errorObj = JSON.parse(text);
+        errorMsg = errorObj.error ?? errorMsg;
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(errorMsg, response.status);
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  const text = await response.text();
+  return (text ? JSON.parse(text) : {}) as T;
 }
 
 export const api = {
@@ -40,6 +54,7 @@ export const api = {
   addRepo: (fullName: string) =>
     apiFetch<Repository>("/repos", { method: "POST", body: JSON.stringify({ fullName }) }),
   getRepos: (options?: RequestInit) => apiFetch<Repository[]>("/repos", options),
+  removeRepo: (repoId: string) => apiFetch<void>(`/repos/${repoId}`, { method: "DELETE" }),
   getRecommendations: (
     params?: { difficulty?: Difficulty; issueType?: string; state?: TriageState | "ALL" },
     options?: RequestInit

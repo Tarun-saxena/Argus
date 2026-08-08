@@ -6,9 +6,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 const CYCLING_WORDS = [
-  "your level",
-  "your skills",
   "you",
+  "your level",
+  "your skills"
 ];
 
 export function Hero() {
@@ -36,10 +36,10 @@ export function Hero() {
   return (
     <section className="relative w-full bg-white dark:bg-zinc-950 overflow-hidden min-h-[115vh] flex flex-col justify-center pt-32 pb-24">
       {/* Evervault style dithered gradient background with premium linear fade-out mask (expanded purple visibility) */}
-      <div 
+      <div
         className="absolute inset-0 bg-no-repeat z-0 select-none pointer-events-none opacity-90"
-        style={{ 
-          backgroundImage: "url('/landing/hero-transition.png')", 
+        style={{
+          backgroundImage: "url('/landing/hero-transition.png')",
           backgroundSize: "100% 100%",
           maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 68%, rgba(0,0,0,0.6) 90%, rgba(0,0,0,0) 100%)",
           WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 68%, rgba(0,0,0,0.6) 90%, rgba(0,0,0,0) 100%)"
@@ -62,7 +62,7 @@ export function Hero() {
       <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-4xl h-[75%] bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.65)_0%,rgba(0,0,0,0)_70%)] blur-2xl pointer-events-none z-0" />
 
       {/* Bottom haze and blur overlay - blends hero background seamlessly into Problem section */}
-      <div 
+      <div
         className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-white dark:from-zinc-950 via-white/80 dark:via-zinc-950/80 to-transparent backdrop-blur-[2px] z-10 pointer-events-none"
       />
 
@@ -89,8 +89,11 @@ export function Hero() {
           <br />
           <span className="inline-flex items-center justify-center">
             matched to{" "}
+            <span className="inline sm:hidden ml-2 text-white font-extrabold">
+              you
+            </span>
             <span
-              className="ml-3 text-white font-extrabold transition-all duration-200"
+              className="hidden sm:inline-block ml-3 text-left text-white font-extrabold transition-all duration-200 min-w-[190px] md:min-w-[270px] lg:min-w-[340px]"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? "translateY(0px)" : "translateY(-8px)",

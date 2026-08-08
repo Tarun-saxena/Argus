@@ -65,7 +65,12 @@ router.get("/explore", authMiddleware, async (req, res) => {
     }
 
     if (trackedOnly) {
-      conditions.push(Prisma.sql`r.user_id IS NOT NULL`);
+      conditions.push(
+        Prisma.sql`EXISTS (
+          SELECT 1 FROM tracked_repos tr 
+          WHERE tr.repo_id = i.repo_id AND tr.user_id = ${req.userId as string}
+        )`
+      );
     }
 
     if (cursorRecord) {

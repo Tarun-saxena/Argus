@@ -27,6 +27,7 @@ model User {
   lastMatchedAt DateTime? @map("last_matched_at")
 
   recommendations Recommendation[]
+  trackedRepos    TrackedRepo[]
 
   @@map("users")
 }
@@ -43,7 +44,8 @@ model Repo {
   topics          String[]
   etag            String?   @map("etag")
 
-  issues Issue[]
+  issues    Issue[]
+  trackedBy TrackedRepo[]
 
   @@map("repos")
 }
@@ -115,4 +117,17 @@ model Recommendation {
   @@index([userId])
   @@index([userId, state])
   @@map("recommendations")
+}
+
+model TrackedRepo {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repoId    String   @map("repo_id")
+  repo      Repo     @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, repoId])
+  @@index([userId])
+  @@map("tracked_repos")
 }

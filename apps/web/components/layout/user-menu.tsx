@@ -11,22 +11,14 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { LogOutIcon, SettingsIcon, UserIcon } from "lucide-react"
-import { api } from "@/lib/api"
+import { LogOutIcon, UserIcon } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/lib/api"
 
 export function UserMenu() {
   const router = useRouter()
-  const [user, setUser] = React.useState<{ username: string; avatarUrl?: string | null } | null>(null)
-
-  React.useEffect(() => {
-    api.getMe()
-      .then((u) => setUser({ username: u.username, avatarUrl: u.avatarUrl }))
-      .catch(() => {
-        // Fallback: show a generic avatar if the API fails
-        setUser({ username: "user" })
-      })
-  }, [])
+  const { user, loading } = useAuth()
 
   const handleLogout = async () => {
     try {
@@ -38,8 +30,12 @@ export function UserMenu() {
     }
   }
 
-  if (!user) {
+  if (loading) {
     return <Skeleton className="size-8 rounded-full" />
+  }
+
+  if (!user) {
+    return null
   }
 
   return (

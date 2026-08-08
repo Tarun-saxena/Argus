@@ -11,6 +11,8 @@ export interface UserProfile {
   interests: string[];
   createdAt: string;
   lastMatchedAt: string | null;
+  trackedRepoCount?: number;
+  recommendationCount?: number;
 }
 
 export interface Repository {
